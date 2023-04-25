@@ -2,9 +2,7 @@
 
 This repository contains the hybrid tuning algorithms proposed in the following article:
 
-
-<p>Giraldo, Sergio A. C., Príamo A. Melo, and Argimiro R. Secchi. 2022. "Tuning of Model Predictive Controllers Based on Hybrid optimization" Processes 10, no. 2:351. <a href="https://doi.org/10.3390/pr10020351" target="_blank">https://doi.org/10.3390/pr10020351</a></p>
-
+> Giraldo, Sergio A. C., Príamo A. Melo, and Argimiro R. Secchi. 2022. "Tuning of Model Predictive Controllers Based on Hybrid optimization" Processes 10, no. 2:351. [https://doi.org/10.3390/pr10020351](https://doi.org/10.3390/pr10020351)
 
 These codes have been adapted to work directly with the Matlab Model Predictive Control Toolbox. As a result, the dynamic outcomes may slightly differ from those presented in the paper. However, the same methodology is followed. This adaptation enables more agile code distribution and encourages improvements.
 
