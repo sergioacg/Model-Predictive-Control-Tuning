@@ -95,6 +95,14 @@ inK=10;
 Xsp(1,inK:80) = 0.2;Xsp(1,80:200) = 0;Xsp(1,200:300) = 0.1;Xsp(1,300:400) = 0.0;
 Xsp(2,inK:80) = 0.2;Xsp(2,80:200) = 0.4;Xsp(2,200:300) = 0.3;Xsp(2,300:400) = 0.0;
 Xsp(3,inK:80) = 0.2;Xsp(3,80:200) = 0.1;Xsp(3,200:300) = 0.0;Xsp(3,300:400) = 0.0;
+
+%% Specify the MD vector
+mdv = zeros(nit,0); %400×0 empty double matrix
+
+% Reference response for compare in GAM algorithm
+t = 0:Ts:(nit-1)*Ts;            % Time vector for simulation    
+Yref = lsim(Pref,Xsp,t,'zoh');  % Simulate reference response using lsim function
+
 %% create MPC controller object with sample time
 % Create an MPC object with the specified sample time and input/output signal type using the 'setmpcsignals' function.
 sysd = setmpcsignals(Pz,MV=[1;2;3]);
@@ -157,7 +165,7 @@ options.OpenLoop = 'off';
 if tuning == true
     w=[0.05 0.40 0.55]; %Pesos para la curva de pareto
     tic
-        [delta,lambda,N,Nu,Fob] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Prefz,7,4);
+        [delta,lambda,N,Nu,Fob] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
     toc
 else
     [filename, pathname] = uigetfile('*.mat', 'Select a MAT-file with the MPC Tuning');
@@ -212,7 +220,7 @@ for i = 1:ny
     sel(i) = 1; % Activate setpoint for controlled variable i
     try
         % Solve MPC in open loop
-        [Xy1, Xu1, ~, Xyma1, Xuma1] = closedloop_toolbox(mpc_toolbox, Xsp.*sel, max(N), max(Nu), delta, lambda, nit_open);
+        [Xy1, Xu1, ~, Xyma1, Xuma1] = closedloop_toolbox(mpc_toolbox, Xsp.*sel,mdv, max(N), max(Nu), delta, lambda, nit_open);
         % Store responses in vectors for later plotting
         Xy(i, :) = Xy1(i, :); % Response of controlled variable of conventional MPC
         Xu(i, :) = Xu1(i, :); % Response of manipulated variable of conventional MPC
@@ -248,7 +256,7 @@ mpc_toolbox.PredictionHorizon = max(N);
 %% specify control horizon
 mpc_toolbox.ControlHorizon = max(Nu);
 %% specify weights
-mpc_toolbox.Weights.MV = delta;
+mpc_toolbox.Weights.OV = delta;
 mpc_toolbox.Weights.MVRate = lambda;
 mpc_toolbox.Weights.ECR = 10000;
 

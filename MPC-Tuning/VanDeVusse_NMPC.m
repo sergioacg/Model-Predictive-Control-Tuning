@@ -148,6 +148,18 @@ end
 Pref=[tf(1,[0.15 1]),0;0,tf(1,[0.26 1])]; %Slow
 Prefz=c2d(Pref,Ts,'zoh'); %Transfer function with the desired dynamics
 
+%% Specify the MD vector
+mdv = zeros(nit,0); %400×0 empty double matrix
+
+% Reference response for compare in GAM algorithm
+% SetPoint
+Xspref = r-row2col(x0(xc)); 
+
+% This dynamic does not necessarily need to be linear, I am doing it
+% linear for convenience only.
+t = 0:Ts:(nit-1)*Ts;  % Time vector for simulation 
+Yref=lsim(Pref,Xspref,t,'zoh')+ones(nit,ny).*x0(xc); % Simulate reference response using lsim function
+
 %% Initial NMPC Tuning for the MPCTuning algorithm
 N = 10; % Prediction Horizon
 Nu = 2; % Control Horizon
@@ -163,7 +175,7 @@ nlobj.Weights.ManipulatedVariablesRate = lambda;
 % controlador MPC para la columna de destilacion de la Shell 3x3
 w=[0.7 0.3]; %Pesos para la curva de pareto
 tic
-    [delta,lambda,N,Nu,Fob] = MPCTuning(nlobj,r,lineal,w,nit,Prefz,5,4,model,init);
+    [delta,lambda,N,Nu,Fob] = MPCTuning(nlobj,r,lineal,w,nit,Yref,mdv,5,4,model,init);
 toc
 
 %% NMPC Tuning
@@ -211,7 +223,7 @@ plot(t,Yref1(:,1),':',ts,Y(1,:),'LineWidth',2);
 ylabel('Concentration of B [mol/l]');
 xlabel('Time [h]');
 title('Closed-loop NMPC Simulation Results');
-legend('Output','Setpoint','Location','best');
+legend('Setpoint','Output Reference','Output','Location','best');
 grid on;
 
 subplot(3,1,2);
@@ -220,7 +232,7 @@ hold on;
 plot(t,Yref1(:,2),':',ts,Y(2,:),'LineWidth',2);
 ylabel('Temperature [C]');
 xlabel('Time [h]');
-legend('Output','Setpoint','Location','best');
+legend('Setpoint','Output Reference','Output','Location','best');
 grid on;
 
 subplot(3,1,3);

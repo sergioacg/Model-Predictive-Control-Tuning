@@ -184,10 +184,7 @@ while ii<=3
                     %Xnu = (abs(Xuma(:,inK))./dffXu);
                     Xnu = (abs(Xuma(:,1))./dffXu);
                     Xnu(isinf(Xnu)|isnan(Xnu)) = 0; % Replace NaNs and infinite values with zeros
-                    % The paper is listed as the summation of the elements, 
-                    % but it was a typographical error because the term is 
-                    % really quadratic. It means the square of the elements. 
-                    % (Sorry for this typo!)
+                    The paper is listed as the summation of the elements, but it was a typographical error because the term is really quadratic. It means the square of the elements. (Sorry for this typo!)
                     Jnu = diag(Xnu*Xnu'); %square 
                     %Jnu = sum(Xnu'); %sum
                     

@@ -20,7 +20,7 @@ function R = PreCon(N,Nu)
 % https://controlautomaticoeducacion.com/
 % 
 
-if all(N > Nu) && all(N ~= 0) && all(Nu ~= 0)
+if min(N) > max(Nu) && all(N ~= 0) && all(Nu ~= 0)
     R = true;
 else
     R = false;
