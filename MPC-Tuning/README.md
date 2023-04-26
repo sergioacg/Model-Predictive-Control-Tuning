@@ -15,7 +15,7 @@ This manual provides step-by-step instructions on how to use the MATLAB script f
 
 2. **Define the setpoint for the study**: Specify the setpoint values (Xsp) for the controlled variables in your system.
 
-3. **Input a desired reference trajectory**: Provide a reference trajectory (Pref) that the optimization algorithm will attempt to match the output response to.
+3. **Input a desired reference trajectory**: Provide a reference trajectory (Yref) that the optimization algorithm will attempt to match the output response to.
 
 4. **Create the MPC controller object**: Set up the MPC controller object using the discrete-time model (sysd) and the specified sample time (Ts).
 

@@ -262,11 +262,11 @@ Par.mpcobj = mpcobj;% MPC object
 [N,Nu,lambda,delta,Fvns,Fgam] = MPC_TFob(Par); % Call MPC_TFob function to tune MPC
 
 % Results
-Np=N; % Prediction horizon
-Nun=Nu; % Control horizon
+Np=max(N); % Prediction horizon
+Nun=max(Nu); % Control horizon
 Fob=[Fvns;Fgam']; % Objective function values
-disp(['N=',num2str(max(N)),';']); % Display prediction horizon
-disp(['Nu=',num2str(max(Nu)),';']); % Display control horizon
+disp(['N=',num2str(N),';']); % Display prediction horizon
+disp(['Nu=',num2str(Nu),';']); % Display control horizon
 disp(['delta=[',num2str(delta),'];']); % Display delta weights
 disp(['lambda=[',num2str(lambda),'];']); % Display lambda weights
 disp(['Fob=[Fvns;Fgam]=[',num2str(Fob'),'];']); % Display objective function values
@@ -275,8 +275,8 @@ disp(['Fob=[Fvns;Fgam]=[',num2str(Fob'),'];']); % Display objective function val
 S = dbstack(); % Get call stack information
 callerName = S(2).name; % Get name of calling script
 
-Tuning_Parameters.N = N; % Store prediction horizon in structure
-Tuning_Parameters.Nu = Nu; % Store control horizon in structure
+Tuning_Parameters.N = Np; % Store prediction horizon in structure
+Tuning_Parameters.Nu = Nun; % Store control horizon in structure
 Tuning_Parameters.delta = delta; % Store delta weights in structure
 Tuning_Parameters.lambda = lambda; % Store lambda weights in structure
 Tuning_Parameters.date = datetime; % Store current date and time in structure

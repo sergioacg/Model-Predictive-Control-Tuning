@@ -239,15 +239,15 @@ for i = 1:my
     % Plot setpoint, closed loop, desired response (ref) and open loop
     plot(t, Xsp(i,:), t, Xy(i,:), t, Yref(:, i), ':', t, Xyma(i,:), '--', 'Linewidth', 2)
     hold on
-    plot(Ts*[inK+N(i)+dmin(i) inK+N(i)+dmin(i)], [0 Xsp(i, end)], 'Linewidth', 2)
+    plot(Ts*[inK+N+dmin(i) inK+N+dmin(i)], [0 Xsp(i, end)], 'Linewidth', 2)
     ylabel(ylab{i}, 'Interpreter', 'latex')
     
     subplot(2, 1, 2)
     stairs(t, Xu(i,:), 'Linewidth', 2)
     hold on
-    plot(t(inK:inK+Nu(i)-1), Xuma(i, inK:inK+Nu(i)-1), '.k', 'MarkerSize', 25, 'Linewidth', 2)
-    stairs([t(1:inK+Nu(i)-1), t(end)], [Xuma(i, 1:inK+Nu(i)-1), Xuma(i, inK+Nu(i)-1)], '--', 'Linewidth', 2)
-    plot(Ts*[inK+Nu(i) inK+Nu(i)], [0 ch(i)], 'Linewidth', 2)
+    plot(t(inK:inK+Nu-1), Xuma(i, inK:inK+Nu-1), '.k', 'MarkerSize', 25, 'Linewidth', 2)
+    stairs([t(1:inK+Nu-1), t(end)], [Xuma(i, 1:inK+Nu-1), Xuma(i, inK+Nu-1)], '--', 'Linewidth', 2)
+    plot(Ts*[inK+Nu inK+Nu], [0 ch(i)], 'Linewidth', 2)
     ylabel(ulab{i}, 'Interpreter', 'latex')
 end
 
