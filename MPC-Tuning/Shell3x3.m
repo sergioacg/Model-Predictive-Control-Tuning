@@ -165,8 +165,12 @@ options.OpenLoop = 'off';
 if tuning == true
     w=[0.05 0.40 0.55]; %Pesos para la curva de pareto
     tic
-        [delta,lambda,N,Nu,Fob] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
+        [mpc_toolbox,scale,delta,lambda,N,Nu,Fob] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
     toc
+    L = scale.L;
+    R = scale.R;
+    Ru = scale.Ru;
+    Rv = scale.Rv;
 else
     [filename, pathname] = uigetfile('*.mat', 'Select a MAT-file with the MPC Tuning');
     if isequal(filename,0) || isequal(pathname,0)
@@ -178,6 +182,10 @@ else
     N = Tuning_Parameters.N; Nu = Tuning_Parameters.Nu;
     delta = Tuning_Parameters.delta;
     lambda = Tuning_Parameters.lambda;
+    L = Tuning_Parameters.scale.L;
+    R = Tuning_Parameters.scale.R;
+    Ru = Tuning_Parameters.scale.Ru;
+    Rv = Tuning_Parameters.scale.Rv;
 end
 
 %% Variables
@@ -208,11 +216,15 @@ ulab{3}='Bottoms reflux heat duty';
 
 nit_open = N(1) + 30; % Number of iterations for the open loop simulation
 t = 0:Ts:(nit_open-1)*Ts;
-Xsp = ones(ny, nit_open); % Reference for the model (step)
+r_ma = ones(ny, nit_open); % Reference for the model (step)
 inK = 1; % Setpoint placed at instant 1
 
+% Scale the signals using L and R matrices
+r_ma = L*r_ma;
+%mdv = R\mdv;
+
 % Reference response with which tuning parameters were found
-Yref = lsim(Prefz, Xsp, t, 'zoh');
+Yref_ma = lsim(Prefz, r_ma, t, 'zoh');
 
 % Selector, to apply one setpoint at a time on each controlled variable
 sel = zeros(ny, 1);
@@ -220,7 +232,7 @@ for i = 1:ny
     sel(i) = 1; % Activate setpoint for controlled variable i
     try
         % Solve MPC in open loop
-        [Xy1, Xu1, ~, Xyma1, Xuma1] = closedloop_toolbox(mpc_toolbox, Xsp.*sel,mdv, max(N), max(Nu), delta, lambda, nit_open);
+        [Xy1, Xu1, ~, Xyma1, Xuma1] = closedloop_toolbox(mpc_toolbox, r_ma.*sel,mdv, max(N), max(Nu), delta, lambda, nit_open);
         % Store responses in vectors for later plotting
         Xy(i, :) = Xy1(i, :); % Response of controlled variable of conventional MPC
         Xu(i, :) = Xu1(i, :); % Response of manipulated variable of conventional MPC
@@ -237,17 +249,17 @@ for i = 1:my
     hold on
     subplot(2, 1, 1)
     % Plot setpoint, closed loop, desired response (ref) and open loop
-    plot(t, Xsp(i,:), t, Xy(i,:), t, Yref(:, i), ':', t, Xyma(i,:), '--', 'Linewidth', 2)
+    plot(t, r_ma(i,:), t, Xy(i,:), t, Yref_ma(:, i), ':', t, Xyma(i,:), '--', 'Linewidth', 2)
     hold on
-    plot(Ts*[inK+N+dmin(i) inK+N+dmin(i)], [0 Xsp(i, end)], 'Linewidth', 2)
+    plot(Ts*[inK+N+dmin(i) inK+N+dmin(i)], [0 r_ma(i, end)], 'Linewidth', 2)
     ylabel(ylab{i}, 'Interpreter', 'latex')
     
     subplot(2, 1, 2)
     stairs(t, Xu(i,:), 'Linewidth', 2)
     hold on
-    plot(t(inK:inK+Nu-1), Xuma(i, inK:inK+Nu-1), '.k', 'MarkerSize', 25, 'Linewidth', 2)
-    stairs([t(1:inK+Nu-1), t(end)], [Xuma(i, 1:inK+Nu-1), Xuma(i, inK+Nu-1)], '--', 'Linewidth', 2)
-    plot(Ts*[inK+Nu inK+Nu], [0 ch(i)], 'Linewidth', 2)
+    plot(t(inK:inK+Nu(i)-1), Xuma(i, inK:inK+Nu(i)-1), '.k', 'MarkerSize', 25, 'Linewidth', 2)
+    stairs([t(1:inK+Nu(i)-1), t(end)], [Xuma(i, 1:inK+Nu(i)-1), Xuma(i, inK+Nu(i)-1)], '--', 'Linewidth', 2)
+    plot(Ts*[inK+Nu(i) inK+Nu(i)], [0 ch(i)], 'Linewidth', 2)
     ylabel(ulab{i}, 'Interpreter', 'latex')
 end
 
@@ -261,22 +273,33 @@ mpc_toolbox.Weights.MVRate = lambda;
 mpc_toolbox.Weights.ECR = 10000;
 
 
-%Define the reference signal and the measured disturbance signal.
-r(1:my,1:nit) = 0;
-r(1,6:80) = 0.2;r(1,80:200) = 0;r(1,200:300) = 0.1;r(1,300:400) = 0.0;
-r(2,6:80) = 0.2;r(2,80:200) = 0.4;r(2,200:300) = 0.3;r(2,300:400) = 0.0;
-r(3,6:80) = 0.2;r(3,80:200) = 0.1;r(3,200:300) = 0.0;r(3,300:400) = 0.0;
-r = row2col(r);
+% Scale the signals using L and R matrices
+r = row2col(L*Xsp);
+% v = row2col(R\mdv);
+
+%v = row2col(R\mdv);
+real_plant = L * Psr * R;
+
+%Define an actual plant model which differs from the predicted model
+plant = setmpcsignals(real_plant,MV=[1;2;3]);
+
+%Create and configure a simulation option set.
+options = mpcsimopt(mpc_toolbox);
+options.Model = plant;
 
 % Simulate the controller.
+[y,t,u,xp] = sim(mpc_toolbox,nit,r,[],options);
 
-[y,t,u,xp] = sim(mpc_toolbox,nit,r);
-Yref1=lsim(Prefz,r,t,'zoh');
+% Unscaled the vectors
+y = row2col(L\y');
+u = row2col(R*u');
+r = row2col(L\r');
+
 
 for i = 1:my
     figure(20)
     subplot(3,1,i); plot(t,u(:,i),'linewidth',2),grid;ylabel(['MV' num2str(i)])
     figure(21)
-    subplot(3,1,i); plot(t,r(:,i),'--',t,y(:,i),t,Yref1(:,i),':','linewidth',2),grid;ylabel(['MO' num2str(i)])
+    subplot(3,1,i); plot(t,r(:,i),'--',t,y(:,i),t,Yref(:,i),':','linewidth',2),grid;ylabel(['MO' num2str(i)])
 end
 
