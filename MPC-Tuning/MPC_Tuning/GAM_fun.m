@@ -96,15 +96,15 @@ end
 % degrees of freedom, what we are trying to do is that Yref has at least the 
 % exact direction of the output of the MPC controller calculated with the 
 % current tuning parameters at the present instant of the optimization algorithm.
-if any(delta == 0)
-    for i=1:ny
-        if delta(i) == 0
-            if Xy(i,end) < 0
-                Yref(i,:) = -1*Yref(i,:);
-            end
-        end
-    end
-end
+% if any(delta == 0)
+%     for i=1:ny
+%         if delta(i) == 0
+%             if Xy(i,end) < 0
+%                 Yref(i,:) = -1*Yref(i,:);
+%             end
+%         end
+%     end
+% end
 
 %% Error between closed-loop response and reference trajectory
 errFA=Xy-Yref; % Calculate error between closed-loop response and reference trajectory

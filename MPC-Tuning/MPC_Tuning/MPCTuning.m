@@ -1,9 +1,16 @@
-function [delta, lambda, Np, Nun, Fob] = MPCTuning(mpcobj, Sp, linear, w, fi, Yref, varargin)
+function [mpcobj, scale, delta, lambda, Np, Nun, Fob] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Yref, varargin)
 % MPCTuning: Find the optimal parameters for (N)MPC algorithm
 %
-% [delta, lambda, Np, Nun] = MPCTuning(mpcobj, Sp, linear, w, fi, Pref) finds the optimal values
-% of the MPC algorithm parameters. The output variables are:
+% [mpcobj, scale, delta, lambda, Np, Nun] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Pref) 
+% finds the optimal values of the MPC algorithm parameters. 
 %
+% The output variables are:
+%
+%   - mpcobj: MPC object from MPC Toolbox with the tuning found and the 
+%             internally scaled model and constraints.
+%             The user must scale the input and output signals of the MPC 
+%             controller for correct calculations in the implementation.
+%   - scale: struct containing L and R matrices for scaling the MPC signals
 %   - delta: tracking setpoint weight
 %   - lambda: control increment weight
 %   - Np: prediction horizon
@@ -11,36 +18,41 @@ function [delta, lambda, Np, Nun, Fob] = MPCTuning(mpcobj, Sp, linear, w, fi, Yr
 %
 % Input Arguments:
 %
-% - mpcobj: MPC object from MPC toolbox
+% - mpcobj_proj: MPC object from MPC toolbox
 % - Sp: internal setpoint 
-% - linear: a boolean variable indicating if a linear system is used (true) or a non-linear system is used (false)
+% - linear: a boolean variable indicating if a linear system is used (true) 
+%           or a non-linear system is used (false)
 % - w: the weight of Pareto optimization
 % - fi: iteration number
 % - Yref: Desired reference trajectory for the optimization algorithm
 %
 % Optional input arguments for non-linear systems:
 %
-% [delta, lambda, Np, Nun] = MPCTuning(mpcobj, Sp, linear, w, fi, Yref, mdv) uses `mdv` as
-% the stimulus of the MPC disturbance, it can be used mainly when working 
-% with an MPC control by bands where there is NOT a fixed setpoint in some 
-% controlled variables. (default: mdv = 1×0 empty double row vector)
+% [mpcobj, scale, delta, lambda, Np, Nun] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Yref, mdv)
+%    uses `mdv` as the stimulus of the MPC disturbance, it can be used 
+%    mainly when working with an MPC control by bands where there is NOT a 
+%    fixed setpoint in some controlled variables. 
+%    (default: mdv = 1×0 empty double row vector)
 %
-% [delta, lambda, Np, Nun] = MPCTuning(mpcobj, Sp, linear, w, fi, Yref, mdv, nbp) uses `nbp` as
-% the number of bits for the prediction horizon (default: 8 bits = 255 as a maximum prediction)
+% [mpcobj, scale, delta, lambda, Np, Nun] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Yref, mdv, nbp)
+%    uses `nbp` as the number of bits for the prediction horizon 
+%    (default: 8 bits = 255 as a maximum prediction)
 %
-% [delta, lambda, Np, Nun] = MPCTuning(mpcobj, Sp, linear, w, fi, Yref, mdv, nbp, nbc) uses `nbc` as
-% the number of bits for the control horizon (default: 4 bits = 15 as a maximum prediction)
+% [mpcobj, scale, delta, lambda, Np, Nun] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Yref, mdv, nbp, nbc)
+%    uses `nbc` as the number of bits for the control horizon 
+%    (default: 4 bits = 15 as a maximum prediction)
 %
-% [delta, lambda, Np, Nun] = MPCTuning(mpcobj, Sp, linear, w, fi, Yref, mdv, nbp, nbc, nlmodel, init) sets 
-% `nlmodel` as the non-linear model of the process to be integrated with ODE, and `init` as its initial condition.
-% `init` is a struct with the following fields:
-%   - init.x0: Initial condition of the model
-%   - init.xc: Array with the output states of the model
-%   - init.u0: Initial condition of the control action
-%   - init.integrator: Model integration function (@ode45, @ode15s, etc.)
+% [mpcobj, scale, delta, lambda, Np, Nun] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Yref, mdv, nbp, nbc, nlmodel, init)
+%    sets `nlmodel` as the non-linear model of the process to be integrated
+%    with ODE, and `init` as its initial condition.
+%   `init` is a struct with the following fields:
+%       - init.x0: Initial condition of the model
+%       - init.xc: Array with the output states of the model
+%       - init.u0: Initial condition of the control action
+%       - init.integrator: Model integration function (@ode45, @ode15s, etc.)
 %
-% [delta, lambda, Np, Nun] = MPCTuning(mpcobj, Sp, linear, w, fi, Yref, mdv, nbp, nbc, nlmodel, init, optimset) sets 
-% the options of optimization for fgoalattain
+% [mpcobj, scale, delta, lambda, Np, Nun] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Yref, mdv, nbp, nbc, nlmodel, init, optimset) 
+%    sets the options of optimization for fgoalattain
 %
 % Output:
 %
@@ -68,6 +80,8 @@ function [delta, lambda, Np, Nun, Fob] = MPCTuning(mpcobj, Sp, linear, w, fi, Yr
 %
 
 global Fv 
+
+mpcobj = mpcobj_proj;
 ni = nargin; % Number of input arguments
 
 % Options for Gam Optimizer
@@ -138,15 +152,41 @@ Xsp=Sp; % Setpoint
 if linear == 1 % If linear model
      % Scale the system model minimizing the condition number
      Km=dcgain(Pz); % Calculate DC gain of plant model
-     [L,R] = CondMin(Km); % Minimize condition number using CondMin function
+     [L,R,S] = CondMin(Km); % Minimize condition number using CondMin function
+     Ru = R(1:ny,1:ny);
+     Rv = R(ny+1:end,ny+1:end);
+     scale.L = L;
+     scale.R = R;
+     scale.Ru = Ru;
+     scale.Rv = Rv;
      Pze=L*Pz*R; % Scale plant model
      q0 = mpcobj.Weights.OV ;   % Weight tracking reference Initial value
      w0 = mpcobj.Weights.MVRate; % Weight control effort Initial value
     % Split the transfer function in numerator, denominator, and delays
     [~,~,dp]=descompMPC(Pze); 
-    % Reference response for compare in GAM algorithm
-%     t = 0:Ts:(fi-1)*Ts;  % Time vector for simulation    
-%     Yref=lsim(Pref,Xsp,t,'zoh'); % Simulate reference response using lsim function
+    
+    sysd = setmpcsignals(Pze,MV=1:ny,MD=ny+1:ny+dy);
+    mpcobj.Model.Plant=sysd;
+    for i = 1:ny
+        mpcobj.MV(i).Min = R(i,i)\mpcobj.MV(i).Min;
+        mpcobj.MV(i).Max = R(i,i)\mpcobj.MV(i).Max;
+        mpcobj.MV(i).RateMin = R(i,i)\mpcobj.MV(i).RateMin;
+        mpcobj.MV(i).RateMax = R(i,i)\mpcobj.MV(i).RateMax;
+    end
+    for i = 1:my
+        mpcobj.OV(i).Min = L(i,i)*mpcobj.OV(i).Min;
+        mpcobj.OV(i).Max = L(i,i)*mpcobj.OV(i).Max;
+    end
+    mpcobj.Model.Nominal.Y = L*mpcobj.Model.Nominal.Y;
+    mpcobj.Model.Nominal.U = R\mpcobj.Model.Nominal.U;
+    Yref = L*col2row(Yref);
+    Xsp  = L*col2row(Xsp);
+    try
+        mdv = R(ny+1:end,ny+1:end)\mdv;
+    catch
+        
+    end
+
 else % If nonlinear model
     Ts = mpcobj.Ts; % Sampling time
     my = mpcobj.Dimensions.NumberOfOutputs; % Number of outputs
@@ -155,6 +195,7 @@ else % If nonlinear model
     XC = init.xc; % Index of controlled states
     q0 = mpcobj.Weights.OutputVariables;   % Weight tracking reference Initial value
     w0 = mpcobj.Weights.ManipulatedVariablesRate;      % Weight control effort Initial value
+    scale = []; 
 
 %     It remains to implement the normalized states and variables in the 
 %     algorithm adapted for the matlab toolbox.
@@ -228,7 +269,7 @@ Par.nu=ny;          % Number of inputs
 Par.nd=dy;          % Number of disturbances
 Par.nrm=nrm;        % Flag - Normalized system?
 if linear ==true % If linear model
-    Par.Pz=Pze;         % Discrete transfer function
+    Par.Pz=Pz;         % Discrete transfer function
     Par.dmin=dmin;      % Minimal delay of MIMO system
 else % If nonlinear model
     Par.Pz=model;       % Nonlinear model
@@ -261,9 +302,23 @@ Par.mpcobj = mpcobj;% MPC object
 %% Tuning Algorithm
 [N,Nu,lambda,delta,Fvns,Fgam] = MPC_TFob(Par); % Call MPC_TFob function to tune MPC
 
+%% specify prediction horizon
+mpcobj.PredictionHorizon = max(N);
+%% specify control horizon
+mpcobj.ControlHorizon = max(Nu);
+%% specify weights
+if linear == 1
+    mpcobj.Weights.OV = delta;
+    mpcobj.Weights.MVRate = lambda;
+    mpcobj.Weights.ECR = 10000;
+else
+    mpcobj.Weights.OutputVariables = delta;
+    mpcobj.Weights.ManipulatedVariablesRate = lambda;
+end
+
 % Results
 Np=max(N); % Prediction horizon
-Nun=max(Nu); % Control horizon
+Nun=Nu; % Control horizon
 Fob=[Fvns;Fgam']; % Objective function values
 disp(['N=',num2str(N),';']); % Display prediction horizon
 disp(['Nu=',num2str(Nu),';']); % Display control horizon
@@ -275,9 +330,11 @@ disp(['Fob=[Fvns;Fgam]=[',num2str(Fob'),'];']); % Display objective function val
 S = dbstack(); % Get call stack information
 callerName = S(2).name; % Get name of calling script
 
+Tuning_Parameters.mpcobj = mpcobj;
 Tuning_Parameters.N = Np; % Store prediction horizon in structure
 Tuning_Parameters.Nu = Nun; % Store control horizon in structure
 Tuning_Parameters.delta = delta; % Store delta weights in structure
 Tuning_Parameters.lambda = lambda; % Store lambda weights in structure
+Tuning_Parameters.scale = scale; %scale matrices
 Tuning_Parameters.date = datetime; % Store current date and time in structure
 save([callerName,'_Tuning_', datestr(datetime,'ddmmmyyyy_HH_MM')], 'Tuning_Parameters') % Save tuning parameters to file
