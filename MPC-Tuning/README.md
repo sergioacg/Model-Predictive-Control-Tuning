@@ -51,3 +51,49 @@ For the nonlinear case, follow these additional instructions:
 6. **Call the MPCTuning algorithm**: Call the MPCTuning function with the required input arguments (nlobj, r, lineal, w, nit, Prefz, 5, 4, model, init). The MPCTuning function finds the optimal values for the MPC algorithm parameters (delta, lambda, N, Nu).
 
 The provided script includes code for defining the nonlinear model, setting up the NMPC object, specifying constraints, and calling the MPCTuning algorithm. Follow these instructions along with the script to tune your NMPC controller using the proposed hybrid optimization methodology.
+
+
+# MPCTuning Function
+
+The main function of this library is `MPCTuning`, which finds the optimal parameters for an (N)MPC algorithm. The function has the following signature:
+
+```matlab
+function [mpcobj, scale, delta, lambda, Np, Nun, Fob] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Yref, varargin)
+```
+
+## Input Parameters
+
+- `mpcobj_proj` (MPC object from the MPC toolbox): The input MPC object from the MPC toolbox that needs to be tuned.
+- `Sp` (Internal setpoint): The internal setpoint used by the MPC controller.
+- `linear` (Boolean): A boolean variable indicating if a linear system is used (`true`) or a non-linear system is used (`false`).
+- `w` (Weight of Pareto optimization): The weight parameter used for Pareto optimization.
+- `fi` (Iteration number): The number of iterations used for the optimization algorithm.
+- `Yref` (Desired reference trajectory): The desired reference trajectory for the optimization algorithm.
+
+## Optional Input Parameters (for non-linear systems)
+
+- `mdv` (Stimulus of the MPC disturbance): Mainly used when working with an MPC control by bands where there is not a fixed setpoint in some controlled variables (default: `mdv` = 1×0 empty double row vector).
+- `nbp` (Number of bits for the prediction horizon): Default is 8 bits, which allows for a maximum prediction of 255.
+- `nbc` (Number of bits for the control horizon): Default is 4 bits, which allows for a maximum prediction of 15.
+- `nlmodel` (Non-linear model of the process): The non-linear model of the process to be integrated with an ODE solver.
+- `init` (Initial condition for the `nlmodel`): A struct with the following fields:
+  - `init.x0`: Initial condition of the model.
+  - `init.xc`: Array with the output states of the model.
+  - `init.u0`: Initial condition of the control action.
+  - `init.integrator`: Model integration function (`@ode45`, `@ode15s`, etc.).
+- `optimset` (Options for fgoalattain optimization): Configuration for the optimization process.
+
+## Output Parameters
+
+- `mpcobj` (Tuned MPC object): The MPC object from the MPC Toolbox with the tuning found and the internally scaled model and constraints. The user must scale the input and output signals of the MPC controller for correct calculations in the implementation.
+- `scale` (Struct containing L and R matrices): Matrices for scaling the MPC signals.
+- `delta` (Tracking setpoint weight): The optimal tracking setpoint weight found by the algorithm.
+- `lambda` (Control increment weight): The optimal control increment weight found by the algorithm.
+- `Np` (Prediction horizon): The optimal prediction horizon found by the algorithm.
+- `Nun` (Control horizon): The optimal control horizon found by the algorithm.
+- `Fob` (Final objective value): The final objective value of the optimization process.
+
+For detailed information on how to use this function, please refer to the following article:
+
+Giraldo, Sergio A. C., Príamo A. Melo, and Argimiro R. Secchi. 2022. "Tuning of Model Predictive Controllers Based on Hybrid Optimization" Processes 10, no. 2: 351. https://doi.org/10.3390/pr10020351
+
