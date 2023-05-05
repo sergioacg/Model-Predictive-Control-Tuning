@@ -98,45 +98,45 @@ r(2,1:nit)=X0(3);  r(2,41:nit)=130;
 %   nx: number of states = 3
 %   ny: number of outputs = 2
 %   nu: number of inputs (all of them are manipulated variables) = 2
-nlobj = nlmpc(nx,ny,nu);
-nlobj.States(1).Name = 'Concentration of A'; nlobj.States(1).Units = 'mol/l';
-nlobj.States(2).Name = 'Concentration of B'; nlobj.States(2).Units = 'mol/l';
-nlobj.States(3).Name = 'Temperature'; nlobj.States(3).Units = 'C';
-nlobj.OV(1).Name = 'Concentration of B'; nlobj.OV(1).Units = 'mol/l';
-nlobj.OV(2).Name = 'Temperature'; nlobj.OV(2).Units = 'C';
-nlobj.MV(1).Name = 'Feed Flowrate'; nlobj.MV(1).Units = 'l/h';
-nlobj.MV(2).Name = 'Heat Exchanged'; nlobj.MV(2).Units = 'kJ/h';
+nlobj_proj = nlmpc(nx,ny,nu);
+nlobj_proj.States(1).Name = 'Concentration of A'; nlobj_proj.States(1).Units = 'mol/l';
+nlobj_proj.States(2).Name = 'Concentration of B'; nlobj_proj.States(2).Units = 'mol/l';
+nlobj_proj.States(3).Name = 'Temperature'; nlobj_proj.States(3).Units = 'C';
+nlobj_proj.OV(1).Name = 'Concentration of B'; nlobj_proj.OV(1).Units = 'mol/l';
+nlobj_proj.OV(2).Name = 'Temperature'; nlobj_proj.OV(2).Units = 'C';
+nlobj_proj.MV(1).Name = 'Feed Flowrate'; nlobj_proj.MV(1).Units = 'l/h';
+nlobj_proj.MV(2).Name = 'Heat Exchanged'; nlobj_proj.MV(2).Units = 'kJ/h';
 
-nlobj.Ts = Ts;                                  % NMPC sample time
+nlobj_proj.Ts = Ts;                                  % NMPC sample time
 
 % Internal model of the NMPC
-nlobj.Model.StateFcn = @(x,u) nmpc_vandevusse_state(x, u);
+nlobj_proj.Model.StateFcn = @(x,u) nmpc_vandevusse_state(x, u);
 % The output function of the prediction model relates the states and inputs 
 % at the current control interval to the outputs. If the number of states 
 % and outputs of the prediction model are the same, you can omit OutputFcn.
 % Specify the output function for the controller. In this case, define 
 % the second and third states as outputs.
 
-nlobj.Model.OutputFcn  = @(x,u) [x(2); x(3)];
+nlobj_proj.Model.OutputFcn  = @(x,u) [x(2); x(3)];
 
-nlobj.Model.IsContinuousTime = true;
+nlobj_proj.Model.IsContinuousTime = true;
 %No parameters; the parameters are defined explicit inside models
-nlobj.Model.NumberOfParameters = 0; 
+nlobj_proj.Model.NumberOfParameters = 0; 
 
 %% NMPC Constraints
 % Set constraints on the outputs, control inputs and their increments.
 % since this is a square system 2x2
 for i = 1:nu
     % Manipulated Variables
-    nlobj.MV(i).Min = lb(i);
-    nlobj.MV(i).Max = ub(i); 
+    nlobj_proj.MV(i).Min = lb(i);
+    nlobj_proj.MV(i).Max = ub(i); 
     % Control increment
-    nlobj.MV(i).RateMin = -inf;   
-    nlobj.MV(i).RateMax = inf;
+    nlobj_proj.MV(i).RateMin = -inf;   
+    nlobj_proj.MV(i).RateMax = inf;
 end
 for i = 1:ny
-    nlobj.OV(i).Min = xmin(i+1);
-    nlobj.OV(i).Max = xmax(i+1);
+    nlobj_proj.OV(i).Min = xmin(i+1);
+    nlobj_proj.OV(i).Max = xmax(i+1);
 end
 
 %% Reference response for controller tuning
@@ -165,28 +165,18 @@ N = 10; % Prediction Horizon
 Nu = 2; % Control Horizon
 delta = [100 1];  % tracking setpoint weight
 lambda = [1e-5 ,1]; % control increment weight
-nlobj.PredictionHorizon = N;                    % Prediction horizon
-nlobj.ControlHorizon = Nu;                      % Control horizon
-nlobj.Weights.OutputVariables = delta;
-nlobj.Weights.ManipulatedVariablesRate = lambda;
+nlobj_proj.PredictionHorizon = N;                    % Prediction horizon
+nlobj_proj.ControlHorizon = Nu;                      % Control horizon
+nlobj_proj.Weights.OutputVariables = delta;
+nlobj_proj.Weights.ManipulatedVariablesRate = lambda;
 
 %% MPC Tuning algorithm
 % Aplicar el algoritmo para intentar encontrar los parámetros de sintonia del
 % controlador MPC para la columna de destilacion de la Shell 3x3
 w=[0.7 0.3]; %Pesos para la curva de pareto
 tic
-    [delta,lambda,N,Nu,Fob] = MPCTuning(nlobj,r,lineal,w,nit,Yref,mdv,5,4,model,init);
+    [nlobj,~,delta,lambda,N,Nu,Fob] = MPCTuning(nlobj_proj,r,lineal,w,nit,Yref,mdv,5,4,model,init);
 toc
-
-%% NMPC Tuning
-% N = 50; % Prediction Horizon
-% Nu = 5; % Control Horizon
-% delta = [100 1];  % tracking setpoint weight
-% lambda = [1e-5 ,1]; % control increment weight
-nlobj.PredictionHorizon = max(N);                    % Prediction horizon
-nlobj.ControlHorizon = max(Nu);                      % Control horizon
-nlobj.Weights.OutputVariables = delta;
-nlobj.Weights.ManipulatedVariablesRate = lambda;
 
 
 %% Validate Custom Functions
