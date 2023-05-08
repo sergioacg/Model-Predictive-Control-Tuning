@@ -196,6 +196,34 @@ else % If nonlinear model
     q0 = mpcobj.Weights.OutputVariables;   % Weight tracking reference Initial value
     w0 = mpcobj.Weights.ManipulatedVariablesRate;      % Weight control effort Initial value
     scale = []; 
+    
+    nx = length(mpcobj.States); %Number of states
+    
+%     xmin = zeros(length(X0),1); % Lower bound of the controlled variables
+%     xmax = xmin;                % Upper bound of the controlled variables
+%     umin = zeros(length(ny),1);
+%     umax = umin;
+%     for i = 1:ny
+%         % Manipulated Variables
+%         umin(i) = mpcobj.MV(i).Min; mpcobj.MV(i).Min = 0;
+%         umax(i) = mpcobj.MV(i).Max; mpcobj.MV(i).Max = 1;
+%         % Control increment
+% %         mpcobj.MV(i).RateMin = -inf;   
+% %         mpcobj.MV(i).RateMax = inf;
+%     end
+%     for i = 1:nx
+%         xmin(i) = mpcobj.State(i).Min; mpcobj.State(i).Min = 0;
+%         xmax(i) = mpcobj.State(i).Max; mpcobj.State(i).Max = 1;
+%     end
+%     for i = 1:my
+%         mpcobj.OV(i).Min = 0;
+%         mpcobj.OV(i).Max = 1;
+%     end
+%     
+%     Xsp = nml(col2row(Sp),xmin(XC),xmax(XC));
+%     Yref = nml(col2row(Yref),xmin(XC),xmax(XC));
+%     init.x0 = nml(col2row(init.x0),xmin,xmax)';
+%     init.u0 = nml(col2row(init.u0),umin,umax)';
 
 %     It remains to implement the normalized states and variables in the 
 %     algorithm adapted for the matlab toolbox.

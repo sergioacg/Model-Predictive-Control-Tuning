@@ -138,6 +138,28 @@ for i = 1:ny
     nlobj_proj.OV(i).Min = xmin(i+1);
     nlobj_proj.OV(i).Max = xmax(i+1);
 end
+for i = 1:nx
+    nlobj_proj.States(i).Min = xmin(i);
+    nlobj_proj.States(i).Max = xmax(i);
+end
+
+%% NMPC Scales
+% set input and output range
+Urange = umax-umin;
+Yrange = xmax(xc)-xmin(xc);
+Xrange = xmax - xmin;
+% scale manipulated variables
+for i = 1:nu
+    nlobj_proj.ManipulatedVariables(i).ScaleFactor = Urange(i);
+end
+% scale outputs
+for i = 1:ny
+    nlobj_proj.OV(i).ScaleFactor = Yrange(i);
+end
+% scale states
+for i = 1:nx
+    nlobj_proj.States(i).ScaleFactor = Xrange(i);
+end
 
 %% Reference response for controller tuning
 % Define the desired response of the controller, in this case, a first-order
@@ -163,8 +185,11 @@ Yref=lsim(Pref,Xspref,t,'zoh')+ones(nit,ny).*x0(xc); % Simulate reference respon
 %% Initial NMPC Tuning for the MPCTuning algorithm
 N = 10; % Prediction Horizon
 Nu = 2; % Control Horizon
-delta = [100 1];  % tracking setpoint weight
-lambda = [1e-5 ,1]; % control increment weight
+%without scaling the model
+% delta = [100 1];  % tracking setpoint weight
+% lambda = [1e-5 ,1]; % control increment weight
+delta = [1 1];  % tracking setpoint weight
+lambda = [0.1 ,0.1]; % control increment weight
 nlobj_proj.PredictionHorizon = N;                    % Prediction horizon
 nlobj_proj.ControlHorizon = Nu;                      % Control horizon
 nlobj_proj.Weights.OutputVariables = delta;
