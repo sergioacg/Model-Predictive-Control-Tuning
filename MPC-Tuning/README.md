@@ -106,9 +106,10 @@ When designing an MPC controller, whether for linear or nonlinear cases, it is e
 
 For linear MPC implementation, the system model can be scaled by minimizing the conditioning number of the matrix G(z), where G(z) represents the linear model of the system, y(z) = G(z)u(z):
 
-\`\`\`latex
+$$
 \underset{\mathbf{L,R}}{\rm min}\ \beta[\mathbf{L}\mathbf{G}(z)\mathbf{R}],
-\`\`\`
+$$
+
 
 Here, L and R are diagonal matrices, and β[G] is the conditioning number of the matrix G. The scaled model, y_s(z) = Ly(z) and u_s(z) = R^{-1}u(z), obtained from the equation above, is used for simulation and controller design.
 
