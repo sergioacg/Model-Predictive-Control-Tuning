@@ -58,7 +58,7 @@ The provided script includes code for defining the nonlinear model, setting up t
 The main function of this library is `MPCTuning`, which finds the optimal parameters for an (N)MPC algorithm. The function has the following signature:
 
 ```matlab
-function [mpcobj, scale, delta, lambda, Np, Nun, Fob] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Yref, varargin)
+function [mpcobj, scale, delta, lambda, Np, Nun] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Yref, mdv, nbp, nbc, nlmodel, init, optimset)
 ```
 
 ## Input Parameters
@@ -69,12 +69,12 @@ function [mpcobj, scale, delta, lambda, Np, Nun, Fob] = MPCTuning(mpcobj_proj, S
 - `w` (Weight of Pareto optimization): The weight parameter used for Pareto optimization.
 - `fi` (Iteration number): The number of iterations used for the optimization algorithm.
 - `Yref` (Desired reference trajectory): The desired reference trajectory for the optimization algorithm.
+- `mdv` (Stimulus of the MPC disturbance): Mainly used when working with an MPC control by bands where there is not a fixed setpoint in some   controlled variables (default: `mdv` = 1×0 empty double row vector).
+- `nbp` (Number of bits for the prediction horizon): Default is 8 bits, which allows for a maximum prediction of 255.
+- `nbc` (Number of bits for the control horizon): Default is 4 bits, which allows for a maximum prediction of 15.
 
 ## Optional Input Parameters (for non-linear systems)
 
-- `mdv` (Stimulus of the MPC disturbance): Mainly used when working with an MPC control by bands where there is not a fixed setpoint in some controlled variables (default: `mdv` = 1×0 empty double row vector).
-- `nbp` (Number of bits for the prediction horizon): Default is 8 bits, which allows for a maximum prediction of 255.
-- `nbc` (Number of bits for the control horizon): Default is 4 bits, which allows for a maximum prediction of 15.
 - `nlmodel` (Non-linear model of the process): The non-linear model of the process to be integrated with an ODE solver.
 - `init` (Initial condition for the `nlmodel`): A struct with the following fields:
   - `init.x0`: Initial condition of the model.
@@ -96,4 +96,56 @@ function [mpcobj, scale, delta, lambda, Np, Nun, Fob] = MPCTuning(mpcobj_proj, S
 For detailed information on how to use this function, please refer to the following article:
 
 Giraldo, Sergio A. C., Príamo A. Melo, and Argimiro R. Secchi. 2022. "Tuning of Model Predictive Controllers Based on Hybrid Optimization" Processes 10, no. 2: 351. https://doi.org/10.3390/pr10020351
+
+
+# System Scaling in MPC Controllers
+
+When designing an MPC controller, whether for linear or nonlinear cases, it is essential to properly scale the system. This helps to avoid ill-conditioning issues in the matrices, improves numerical stability, and leads to better controller performance.
+
+## Linear Case
+
+For linear MPC implementation, the system model can be scaled by minimizing the conditioning number of the matrix G(z), where G(z) represents the linear model of the system, y(z) = G(z)u(z):
+
+\`\`\`latex
+\underset{\mathbf{L,R}}{\rm min}\ \beta[\mathbf{L}\mathbf{G}(z)\mathbf{R}],
+\`\`\`
+
+Here, L and R are diagonal matrices, and β[G] is the conditioning number of the matrix G. The scaled model, y_s(z) = Ly(z) and u_s(z) = R^{-1}u(z), obtained from the equation above, is used for simulation and controller design.
+
+## Nonlinear Case (NMPC)
+
+For the nonlinear case using NMPC, we can employ the ScaleFactor property of the nlmpc object. Here's an explanation of how the ranges Urange, Yrange, and Xrange are determined:
+
+1. Urange: This range is determined by calculating the difference between the maximum and minimum values of the manipulated variables (umax - umin).
+
+2. Yrange: This range is calculated by taking the difference between the maximum and minimum values of the controlled variables (xmax(xc) - xmin(xc)).
+
+3. Xrange: This range is calculated by taking the difference between the maximum and minimum values of the state variables (xmax - xmin).
+
+The ScaleFactor property is then set for each manipulated variable, output variable, and state variable in the nlmpc object.
+
+Here is an example of setting the ScaleFactors for the manipulated variables, output variables, and state variables:
+
+\`\`\`matlab
+% NMPC Scales
+% set input and output range
+Urange = umax-umin;
+Yrange = xmax(xc)-xmin(xc);
+Xrange = xmax - xmin;
+% scale manipulated variables
+for i = 1:nu
+    nlobj_proj.ManipulatedVariables(i).ScaleFactor = Urange(i);
+end
+% scale outputs
+for i = 1:ny
+    nlobj_proj.OV(i).ScaleFactor = Yrange(i);
+end
+% scale states
+for i = 1:nx
+    nlobj_proj.States(i).ScaleFactor = Xrange(i);
+end
+\`\`\`
+
+By properly scaling the system, the controller can achieve better performance and numerical stability.
+
 
