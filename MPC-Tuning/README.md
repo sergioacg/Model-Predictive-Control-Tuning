@@ -111,7 +111,7 @@ $$
 $$
 
 
-Here, L and R are diagonal matrices, and β[G] is the conditioning number of the matrix G. The scaled model, y_s(z) = Ly(z) and u_s(z) = R^{-1}u(z), obtained from the equation above, is used for simulation and controller design.
+Here, L and R are diagonal matrices, and β[G] is the conditioning number of the matrix G. The scaled model, $y_s(z) = Ly(z)$ and $u_s(z) = R^{-1}u(z)$, obtained from the equation above, is used for simulation and controller design.
 
 ## Nonlinear Case (NMPC)
 
@@ -127,7 +127,8 @@ The ScaleFactor property is then set for each manipulated variable, output varia
 
 Here is an example of setting the ScaleFactors for the manipulated variables, output variables, and state variables:
 
-\`\`\`matlab
+<pre>
+```matlab
 % NMPC Scales
 % set input and output range
 Urange = umax-umin;
@@ -145,7 +146,8 @@ end
 for i = 1:nx
     nlobj_proj.States(i).ScaleFactor = Xrange(i);
 end
-\`\`\`
+```
+</pre>
 
 By properly scaling the system, the controller can achieve better performance and numerical stability.
 
