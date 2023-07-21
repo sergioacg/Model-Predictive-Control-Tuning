@@ -161,8 +161,27 @@ for i = 1:my
 end
 mpc_toolbox.OV(1).MinECR = 0.1;
 mpc_toolbox.OV(1).MaxECR = 0.1;
-mpc_toolbox.OV(2).MinECR = 0.1;
-mpc_toolbox.OV(2).MaxECR = 0.1;
+mpc_toolbox.OV(2).MinECR = 0.5;
+mpc_toolbox.OV(2).MaxECR = 0.5;
+
+
+%% MPC Scales
+% set input and output range
+Urange = Umx-Umn;
+Yrange = Ymx-Ymn;
+
+% scale manipulated variables
+for i = 1:ny
+    mpc_toolbox.ManipulatedVariables(i).ScaleFactor = Urange(i);
+end
+% scale outputs
+for i = 1:my
+    mpc_toolbox.OV(i).ScaleFactor = Yrange(i);
+end
+% distrubance variables
+ mpc_toolbox.DisturbanceVariables(1).ScaleFactor = 0.5;
+ mpc_toolbox.DisturbanceVariables(2).ScaleFactor = 0.5;
+ 
 %% specify weights
 mpc_toolbox.Weights.MV = [0 0 0];
 mpc_toolbox.Weights.MVRate = [0.1 0.1 0.1];
