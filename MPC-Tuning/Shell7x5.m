@@ -179,7 +179,7 @@ options.OpenLoop = 'off';
 
 %% MPC Tuning algorithm
 if tuning == true
-    %w=[0.0001 0.0001 0.5 0.5 0.5 0.5 0.5]; %Pesos para la curva de pareto
+    %w=[0.0001 0.0001 0.5 0.5 0.5 0.5 0.5]; %pareto
     w=[0.0001 0.0001 1 0.5 1 0.5 1];
     tic
         [mpc_toolbox,scale,delta,lambda,N,Nu,Fob] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
