@@ -172,10 +172,16 @@ if linear == 1 % If linear model
         mpcobj.MV(i).Max = R(i,i)\mpcobj.MV(i).Max;
         mpcobj.MV(i).RateMin = R(i,i)\mpcobj.MV(i).RateMin;
         mpcobj.MV(i).RateMax = R(i,i)\mpcobj.MV(i).RateMax;
+        if mpcobj.MV(i).ScaleFactor ~= 1
+            mpcobj.MV(i).ScaleFactor = R(i,i)\mpcobj.MV(i).ScaleFactor;%new
+        end
     end
     for i = 1:my
         mpcobj.OV(i).Min = L(i,i)*mpcobj.OV(i).Min;
         mpcobj.OV(i).Max = L(i,i)*mpcobj.OV(i).Max;
+        if mpcobj.OV(i).ScaleFactor ~= 1
+            mpcobj.OV(i).ScaleFactor = L(i,i)*mpcobj.OV(i).ScaleFactor;%new
+        end
     end
     mpcobj.Model.Nominal.Y = L*mpcobj.Model.Nominal.Y;
     mpcobj.Model.Nominal.U = R\mpcobj.Model.Nominal.U;
@@ -185,6 +191,12 @@ if linear == 1 % If linear model
         mdv = R(ny+1:end,ny+1:end)\mdv;
     catch
         
+    end
+    % distrubance variables
+    for i = 1:dy
+        if mpcobj.DV(i).ScaleFactor ~= 1
+            mpcobj.DV(i).ScaleFactor = Rv(i,i)\mpcobj.DV(i).ScaleFactor;
+        end
     end
 
 else % If nonlinear model
