@@ -330,6 +330,7 @@ Par.mpcobj = mpcobj;% MPC object
 %% Tuning Algorithm
 [N,Nu,lambda,delta,Fvns,Fgam] = MPC_TFob(Par); % Call MPC_TFob function to tune MPC
 
+mpcobj.ControlHorizon = 1;
 %% specify prediction horizon
 mpcobj.PredictionHorizon = max(N);
 %% specify control horizon
