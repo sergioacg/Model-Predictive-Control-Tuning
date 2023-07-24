@@ -23,9 +23,11 @@ datetime % Displays the current date and time
 %true: find the tuning parameters, false: use .mat file to load the tuning parameters.
 tuning = true; 
 rest = true; % false: Without constraints; true: With constraints
-caso = 2; % 1: Case 1 (fast); 2: Case 2 (slow)
+caso = 1; % 1: Case 1 (fast); 2: Case 2 (slow)
 nominal = true; % true: Nominal case; false: Model error case
 lineal = true; % Linear model used in MPCTuning
+simulink = false; %Simulate the process with Simulink (true) / Matlab (false)
+
 
 addpath('MPC_Tuning') % Adds the 'MPC_Tuning' folder to the Matlab path
 
@@ -186,6 +188,7 @@ else
     R = Tuning_Parameters.scale.R;
     Ru = Tuning_Parameters.scale.Ru;
     Rv = Tuning_Parameters.scale.Rv;
+    mpc_toolbox = Tuning_Parameters.mpcobj;
 end
 
 %% Variables
@@ -216,7 +219,7 @@ ulab{3}='Bottoms reflux heat duty';
 
 nit_open = N(1) + 30; % Number of iterations for the open loop simulation
 t = 0:Ts:(nit_open-1)*Ts;
-r_ma = ones(ny, nit_open); % Reference for the model (step)
+r_ma = ones(my, nit_open); % Reference for the model (step)
 inK = 1; % Setpoint placed at instant 1
 
 % Scale the signals using L and R matrices
@@ -227,7 +230,7 @@ r_ma = L*r_ma;
 Yref_ma = lsim(Prefz, r_ma, t, 'zoh');
 
 % Selector, to apply one setpoint at a time on each controlled variable
-sel = zeros(ny, 1);
+sel = zeros(my, 1);
 for i = 1:ny
     sel(i) = 1; % Activate setpoint for controlled variable i
     try
@@ -288,12 +291,16 @@ options = mpcsimopt(mpc_toolbox);
 options.Model = plant;
 
 % Simulate the controller.
-[y,t,u,xp] = sim(mpc_toolbox,nit,r,[],options);
-
-% Unscaled the vectors
-y = row2col(L\y');
-u = row2col(R*u');
-r = row2col(L\r');
+if simulink == false
+    [y,t,u,xp] = sim(mpc_toolbox,nit,r,[],options);
+    % Unscaled the vectors
+    y = row2col(L\y');
+    u = row2col(R*u');
+    r = row2col(L\r');
+else
+    sim('MPC_Shell3x3')
+    Yref = lsim(Pref,r,t,'zoh'); 
+end
 
 
 for i = 1:my

@@ -161,8 +161,27 @@ for i = 1:my
 end
 mpc_toolbox.OV(1).MinECR = 0.1;
 mpc_toolbox.OV(1).MaxECR = 0.1;
-mpc_toolbox.OV(2).MinECR = 0.1;
-mpc_toolbox.OV(2).MaxECR = 0.1;
+mpc_toolbox.OV(2).MinECR = 0.5;
+mpc_toolbox.OV(2).MaxECR = 0.5;
+
+
+%% MPC Scales
+% set input and output range
+Urange = Umx-Umn;
+Yrange = Ymx-Ymn;
+
+% scale manipulated variables
+for i = 1:ny
+    mpc_toolbox.ManipulatedVariables(i).ScaleFactor = Urange(i);
+end
+% scale outputs
+for i = 1:my
+    mpc_toolbox.OV(i).ScaleFactor = Yrange(i);
+end
+% distrubance variables
+ mpc_toolbox.DisturbanceVariables(1).ScaleFactor = 0.5;
+ mpc_toolbox.DisturbanceVariables(2).ScaleFactor = 0.5;
+ 
 %% specify weights
 mpc_toolbox.Weights.MV = [0 0 0];
 mpc_toolbox.Weights.MVRate = [0.1 0.1 0.1];
@@ -179,7 +198,7 @@ options.OpenLoop = 'off';
 
 %% MPC Tuning algorithm
 if tuning == true
-    %w=[0.0001 0.0001 0.5 0.5 0.5 0.5 0.5]; %Pesos para la curva de pareto
+    %w=[0.0001 0.0001 0.5 0.5 0.5 0.5 0.5]; %pareto
     w=[0.0001 0.0001 1 0.5 1 0.5 1];
     tic
         [mpc_toolbox,scale,delta,lambda,N,Nu,Fob] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
@@ -205,7 +224,71 @@ else
     Ru = Tuning_Parameters.scale.Ru;
     Rv = Tuning_Parameters.scale.Rv;
 end
+coloresG = [30, 112, 0]/255;
+colorBand = [0.4940 0.1840 0.5560];
+fontsize = 18;
 
+%% Closed Loop Simulation with internal Model
+ylab{1}='$y_1$';ylab{2}='$y_2$';ylab{3}='$y_3$';ylab{4}='$y_4$';ylab{5}='$y_5$';
+ylab{6}='$y_6$';ylab{7}='$y_7$';
+yolab{1}='$y_{o_1}(k|1)$';yolab{2}='$y_{o_2}(k|1)$';yolab{3}='$y_{o_3}(k|1)$';
+yolab{4}='$y_{o_4}(k|1)$';yolab{5}='$y_{o_5}(k|1)$';yolab{6}='$y_{o_6}(k|1)$';yolab{7}='$y_{o_7}(k|1)$';
+ulab{1}='$u_1$';ulab{2}='$u_2$';ulab{3}='$u_3$';
+
+ %% Resultad
+FS=16;
+colores=[30, 112, 0]/255;
+coloresR=[178, 201, 35]/255;
+nit_open = N(1) + 30; % Number of iterations for the open loop simulation
+t = 0:Ts:(nit_open-1)*Ts;
+r_ma = zeros(my, nit_open); % Reference for the model (step)
+r_ma(:,1:5) = 1;
+inK = 1; % Setpoint placed at instant 1
+
+% Scale the signals using L and R matrices
+r_ma = L*r_ma;
+%
+
+% Reference response with which tuning parameters were found
+Yref_ma = lsim(Prefz, r_ma, t, 'zoh');
+
+% Specify the MD vector
+mdv_ma = zeros(2,nit_open);
+mdv_ma(:,1:end) = 0.5;
+mdv_ma = Rv\mdv_ma;
+
+%Non-square system
+[Xy,Xu,~,Xyma,Xuma] = closedloop_toolbox(mpc_toolbox, r_ma,mdv_ma,max(N),max(Nu),delta,lambda,nit_open);
+
+ch = max(max(Xuma', Xu')); % Variable used to plot length of horizons in graph
+figure
+for i = 1:my
+    
+    hold on
+    subplot(4,2,i); 
+    % Plot setpoint, closed loop, desired response (ref) and open loop
+    plot(t, Xy(i,:),'color',coloresG, 'Linewidth', 2)
+    hold on
+    plot(t, Xyma(i,:), '--m', 'Linewidth', 2)
+%     plot(Ts*[inK+N+dmin(i) inK+N+dmin(i)], [min([min(Xy(i,:)), min(Yref_ma(:, i)), min(Xyma(i,:))]), max([max(Xy(i,:)), max(Yref_ma(:, i)), max(Xyma(i,:))])], 'Linewidth', 2)
+    ylabel(ylab{i}, 'Interpreter', 'latex')
+    set(gca,'FontSize',fontsize,'TickLabelInterpreter','latex' )
+    
+end
+legend({'Closed-loop','$y_{o}(k|1)$'},'Location','best','Interpreter','latex');
+
+figure
+for i = 1:ny
+    subplot(3,1,i); 
+    stairs(t, Xu(i,:),'color',coloresG, 'Linewidth', 2)
+    hold on
+    o=plot(t(inK:inK+Nu(i)-1), Xuma(i, inK:inK+Nu(i)-1), '.k', 'MarkerSize', 25, 'Linewidth', 2);
+    stairs([t(1:inK+Nu(i)-1), t(end)], [Xuma(i, 1:inK+Nu(i)-1), Xuma(i, inK+Nu(i)-1)], '--m', 'Linewidth', 2)
+    ylabel(ulab{i}, 'Interpreter', 'latex')
+    legend(o,{['$u_',num2str(i),'$']},'Location','southeast','Interpreter','latex');
+    set(gca,'FontSize',fontsize,'TickLabelInterpreter','latex' )
+    xlim([0 nit_open*Ts])
+end
 
 % Scale the signals using L and R matrices
 r = row2col(L*Xsp);
@@ -225,31 +308,34 @@ options.Model = plant;
 % Unscaled the vectors
 y = row2col(L\y');
 u=row2col(Ru*u');
+Yref = row2col(Yref);
 
 Gse = L*Gs*Ru;
 Dse = L*Ds*Rv;
 
-fontsize = 18;
+
 figure
 for i = 1:3
     subplot(3,1,i); 
-    stairs(t,u(:,i),'linewidth',4),grid;
+    stairs(t,u(:,i),'color',coloresG,'linewidth',4),grid;
     ylabel(['$$u_' num2str(i) '$$'],'interpreter','latex')
     xlabel('time [min]','interpreter','latex')
     set(gca,'FontSize',fontsize,'TickLabelInterpreter','latex')
     hold on
-    plot([t(1) t(end)],[Umn(i) Umn(i)],'-r',[t(1) t(end)],[Umx(i) Umx(i)],'-r','linewidth',2)
+    plot([t(1) t(end)],[Umn(i) Umn(i)],'--',[t(1) t(end)],[Umx(i) Umx(i)],'--','color',colorBand,'linewidth',2)
 end
 legend('Manipulated variables', 'Hard-constraints','interpreter','latex')
 
 figure
 for i = 1:7
     subplot(4,2,i); 
-    plot(t,y(:,i),'-b','linewidth',4)
+    plot(t,Yref(:,i),':k','linewidth',2)
     hold on
-    plot([t(1) t(end)],[Ymn(i) Ymn(i)],'-r',[t(1) t(end)],[Ymx(i) Ymx(i)],'-r','linewidth',2)
+    plot(t,y(:,i),'color',coloresG,'linewidth',4)
+    hold on
+    plot([t(1) t(end)],[Ymn(i) Ymn(i)],'--',[t(1) t(end)],[Ymx(i) Ymx(i)],'--','color',colorBand,'linewidth',2)
     grid;ylabel(['$$y_' num2str(i) '$$'],'interpreter','latex')
     set(gca,'FontSize',fontsize,'TickLabelInterpreter','latex' )
     xlabel('time [min]','interpreter','latex')
 end
-legend('Controlled variables', 'Soft-constraints','interpreter','latex')
+legend('Reference trajectory','Closed-loop response', 'Soft-constraints','interpreter','latex')

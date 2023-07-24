@@ -28,6 +28,8 @@ rest = true; % false: Without constraints; true: With constraints
 caso = 1; % 1: Case 1 (fast); 2: Case 2 (slow)
 nominal = true; % true: Nominal case; false: Model error case
 lineal = false; % Non-Linear model used in MPCTuning
+%true: find the tuning parameters, false: use .mat file to load the tuning parameters.
+tuning = true; 
 
 %% Simulation Time Parameters (Simulation Parameters)
 Ts=0.05;        % Sampling Period
@@ -165,9 +167,9 @@ end
 % Define the desired response of the controller, in this case, a first-order
 % dynamics with unit gain is chosen to reach the setpoint. The time constant
 % is varied to modify the speed at which the reference is reached.
-% Pref=[tf(1,[0.05 1]),0;0,tf(1,[0.0875 1])]; %Fast
+Pref=[tf(1,[0.05 1]),0;0,tf(1,[0.0875 1])]; %Fast
 % Pref=[tf(1,[0.3 1]),0;0,tf(1,[0.4 1])]; %VERY Slow
-Pref=[tf(1,[0.15 1]),0;0,tf(1,[0.26 1])]; %Slow
+% Pref=[tf(1,[0.15 1]),0;0,tf(1,[0.26 1])]; %Slow
 Prefz=c2d(Pref,Ts,'zoh'); %Transfer function with the desired dynamics
 
 %% Specify the MD vector
@@ -196,12 +198,28 @@ nlobj_proj.Weights.OutputVariables = delta;
 nlobj_proj.Weights.ManipulatedVariablesRate = lambda;
 
 %% MPC Tuning algorithm
-% Aplicar el algoritmo para intentar encontrar los parámetros de sintonia del
-% controlador MPC para la columna de destilacion de la Shell 3x3
-w=[0.7 0.3]; %Pesos para la curva de pareto
-tic
-    [nlobj,~,delta,lambda,N,Nu,Fob] = MPCTuning(nlobj_proj,r,lineal,w,nit,Yref,mdv,5,4,model,init);
-toc
+if tuning == true
+    w=[0.7 0.3]; %Weights for the Pareto curve
+    tic
+       [nlobj,~,delta,lambda,N,Nu,Fob] = MPCTuning(nlobj_proj,r,lineal,w,nit,Yref,mdv,5,4,model,init);
+    toc
+    L = scale.L;
+    R = scale.R;
+    Ru = scale.Ru;
+    Rv = scale.Rv;
+else
+    [filename, pathname] = uigetfile('*.mat', 'Select a MAT-file with the MPC Tuning');
+    if isequal(filename,0) || isequal(pathname,0)
+       disp('User pressed cancel');
+    else
+       disp(['User selected ', fullfile(pathname, filename)]);
+    end
+    load(filename);
+    N = Tuning_Parameters.N; Nu = Tuning_Parameters.Nu;
+    delta = Tuning_Parameters.delta;
+    lambda = Tuning_Parameters.lambda;
+    nlobj = Tuning_Parameters.mpcobj;
+end
 
 
 %% Validate Custom Functions
