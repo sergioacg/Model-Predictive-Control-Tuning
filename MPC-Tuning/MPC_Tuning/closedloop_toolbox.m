@@ -33,7 +33,7 @@ my = dimen(2); %Number of output variables
 ny = dimen(1); %Number of manipulated variables
 Pz = mpc_toolbox.Model.Plant;
 Ts = Pz.Ts;
-mpcobj.ControlHorizon = 1;
+mpcobj.ControlHorizon = 1;%Initialized value to avoid warnings
 %% Specify prediction horizon
 mpc_toolbox.PredictionHorizon = max(N);
 %% Specify control horizon
