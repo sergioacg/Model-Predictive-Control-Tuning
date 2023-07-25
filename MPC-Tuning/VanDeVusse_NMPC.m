@@ -203,10 +203,6 @@ if tuning == true
     tic
        [nlobj,~,delta,lambda,N,Nu,Fob] = MPCTuning(nlobj_proj,r,lineal,w,nit,Yref,mdv,5,4,model,init);
     toc
-    L = scale.L;
-    R = scale.R;
-    Ru = scale.Ru;
-    Rv = scale.Rv;
 else
     [filename, pathname] = uigetfile('*.mat', 'Select a MAT-file with the MPC Tuning');
     if isequal(filename,0) || isequal(pathname,0)
