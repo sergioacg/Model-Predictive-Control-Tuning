@@ -27,7 +27,7 @@ datetime % Displays the current date and time
 
 %% ********* Code Configuration Flags ************
 %true: find the tuning parameters, false: use .mat file to load the tuning parameters.
-tuning = false; 
+tuning = true; 
 rest = true; % false: Without constraints; true: With constraints
 nominal = true; % true: Nominal case; false: Model error case
 lineal = true; % Linear model used in MPCTuning
