@@ -157,7 +157,7 @@ end
 
 %% specify simulation options
 % Set simulation options for the MPC controller using the 'mpcsimopt' function.
-options = mpcsimopt();
+options = mpcsimopt(mpc_toolbox);
 options.RefLookAhead = 'off';
 options.MDLookAhead = 'off';
 options.Constraints = 'on';
@@ -275,20 +275,9 @@ mpc_toolbox.Weights.OV = delta;
 mpc_toolbox.Weights.MVRate = lambda;
 mpc_toolbox.Weights.ECR = 10000;
 
-
 % Scale the signals using L and R matrices
 r = row2col(L*Xsp);
 % v = row2col(R\mdv);
-
-%v = row2col(R\mdv);
-real_plant = L * Psr * R;
-
-%Define an actual plant model which differs from the predicted model
-plant = setmpcsignals(real_plant,MV=[1;2;3]);
-
-%Create and configure a simulation option set.
-options = mpcsimopt(mpc_toolbox);
-options.Model = plant;
 
 % Simulate the controller.
 if simulink == false
