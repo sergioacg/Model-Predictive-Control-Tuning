@@ -293,9 +293,9 @@ end
 % Scale the signals using L and R matrices
 r = row2col(L*Xsp);
 v = row2col(Rv\mdv);
-real_plant = L * Psr * R;
 
 %Define an actual plant model which differs from the predicted model
+real_plant = L * Psr * R;
 plant = setmpcsignals(real_plant,MV=[1;2;3],MD=[4;5]);
 
 %Create and configure a simulation option set.
