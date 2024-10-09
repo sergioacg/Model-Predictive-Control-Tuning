@@ -1,5 +1,5 @@
-%% Calculation of MPC control parameters for the Wood & Berry
-% This file configures MPC for the first case adapted to the Matlab toolbox,
+%% Calculation of MPC control parameters for the Shell 3x3 Article
+% This file configures GPC for the first case adapted to the Matlab toolbox,
 % providing greater robustness and ease of code distribution.
 % Modify the flags at the beginning of the code to set the desired
 % configuration in the simulation.
@@ -23,59 +23,57 @@ datetime % Displays the current date and time
 %true: find the tuning parameters, false: use .mat file to load the tuning parameters.
 tuning = true; 
 rest = true; % false: Without constraints; true: With constraints
-caso = 1; % 1: Case 1 (fast); 2: Case 2 (slow)
+caso = 2; % 1: Case 1 (fast); 2: Case 2 (slow)
 nominal = true; % true: Nominal case; false: Model error case
 lineal = true; % Linear model used in MPCTuning
-simulink = false; %Simulate the process with Simulink (true) / Matlab (false)
+simulink = true; %Simulate the process with Simulink (true) / Matlab (false)
+
 
 addpath('MPC_Tuning') % Adds the 'MPC_Tuning' folder to the Matlab path
 
 %% Model error of the Shell column (To use it in a real plant)
 if nominal == true
-    % Nominal case
-    deltak = 0.0; % Fixed value of uncertainty in the gain
-    deltaL = 0; % Fixed value of uncertainty in the delay
+    e1 = 0.0; e2 = 0.0; e3 = 0.0; % Nominal case
 else
-   % Model error case
-   deltak = 0.2; % Fixed value of uncertainty in the gain
-   deltaL = 1; % Fixed value of uncertainty in the delay
+    e1 = 0.2; e2 = 0.2; e3 = 0.3; % Model error case
 end
-%% System with delay and uncertainty
-Gsr=[tf(12.8,[16.7 1])*(1+deltak) tf(-18.9,[21 1])*(1+deltak);
-   tf(6.6,[10.9 1])*(1+deltak) tf(-19.4,[14.4 1])*(1+deltak)];
-Gsr.iodelay=[1 2;2 1]+deltaL;
 
-%Nominal model of the process
-Gs=[tf(12.8,[16.7 1]) tf(-18.9,[21 1]);tf(6.6,[10.9 1]) tf(-19.4,[14.4 1])];
-Gs.iodelay=[1 2;2 1];
+%% Define the process
+% Transfer function
+Psr = [tf(4.05+2.11*e1,[50 1]) tf(1.77+0.39*e2,[60 1]) tf(5.88+0.59*e3,[50 1]);...
+tf(5.39+3.29*e1,[50 1]) tf(5.72+0.57*e2,[60 1]) tf(6.9+0.89*e3,[40 1]);...
+tf(4.38+3.11*e1,[33 1]) tf(4.42+0.73*e2,[44 1]) tf(7.2+1.33*e3,[19 1]);];
 
-Ds = [tf(3.8,[14.9 1]); tf(4.9,[13.2 1])];
-Ds.iodelay = [8.1; 3.4];
+Lr = [27 28 27;18 14 15;20 22 0]+0; % Delay
+Psr.iodelay = Lr; % Adds the delay to the transfer function
+
+%% Define el modelo
+% Transfer Function Model (continuous-time)
+Ps=[tf(4.05,[50 1]) tf(1.77,[60 1]) tf(5.88,[50 1]);...
+tf(5.39,[50 1]) tf(5.72,[60 1]) tf(6.9,[40 1]);...
+tf(4.38,[33 1]) tf(4.42,[44 1]) tf(7.2,[19 1]);];
+
+% Input/output delay matrix
+Ls = [27 28 27;18 14 15;20 22 0];
+Ps.iodelay=Ls;
 
 % Sampling Period and Number of iterations
-Ts=1.0;
-nit=200;
-
-% Model uncertainties
-Gs=Gs*(1+deltak);
-Gs.iodelay=[0 1;1 0]+deltaL;
-
-Ps=[Gs Ds];
+Ts=4.0;
+nit=500;
 
 % Discrete-time Model
 Pz=c2d(Ps,Ts,'zoh');
 
 % Number of Inputs and Outputs
-my = 2;
-ny = 2;
+[my,ny]=size(Pz);
 
 %% Reference Trajectory for the tuning algorithm
 if caso == 1
-    Pref=[tf(1,[10 1]),0;0,tf(1,[7 1])];
+    Pref=[tf(1,[5 1]),0,0;0,tf(1,[9 1]),0;0,0,tf(1,[5.7 1])];
 else
-    Pref=[tf(1,[25 1]),0;0,tf(1,[20 1])];
+    Pref=[tf(1,[30 1]),0,0;0,tf(1,[30 1]),0;0,0,tf(1,[30 1])];
 end
-Pref.iodelay=[1,0;0,1];
+Pref.iodelay=[27,0,0;0,14,0;0,0,0];
 Prefz=c2d(Pref,Ts,'zoh');
 
 %% Minimum Plant Input-Output Delay
@@ -89,21 +87,20 @@ end
 
 %% Setpoint for the Shell example
 inK=10;
-Xsp(1,inK:nit) = 0.8;
-Xsp(2,60:nit) = 0.5;
-
+Xsp(1,inK:80) = 0.2;Xsp(1,80:200) = 0;Xsp(1,200:400) = 0.1;Xsp(1,400:500) = 0.0;
+Xsp(2,inK:80) = 0.2;Xsp(2,80:200) = 0.4;Xsp(2,200:400) = 0.3;Xsp(2,400:500) = 0.0;
+Xsp(3,inK:80) = 0.2;Xsp(3,80:200) = 0.1;Xsp(3,200:400) = 0.0;Xsp(3,400:500) = 0.0;
 
 %% Specify the MD vector
-mdv = zeros(nit,1);
-mdv(140:end) = -0.25;
- 
+mdv = zeros(nit,0); %400×0 empty double matrix
+
 % Reference response for compare in GAM algorithm
 t = 0:Ts:(nit-1)*Ts;            % Time vector for simulation    
 Yref = lsim(Pref,Xsp,t,'zoh');  % Simulate reference response using lsim function
 
 %% create MPC controller object with sample time
 % Create an MPC object with the specified sample time and input/output signal type using the 'setmpcsignals' function.
-sysd = setmpcsignals(Pz,MV=[1;2],MD=[3]);
+sysd = setmpcsignals(Pz,MV=[1;2;3]);
 
 % Initialize the MPC object using the 'mpc' function.
 % Specify the plant model, sample time, prediction and control horizons, and input/output signal type.
@@ -112,20 +109,27 @@ mpc_toolbox = mpc(sysd, Ts);
 
 %% specify nominal values for inputs and outputs
 % Specify nominal values for the plant inputs and outputs.
-mpc_toolbox.Model.Nominal.U = [0;0];
-mpc_toolbox.Model.Nominal.Y = [0;0];
+mpc_toolbox.Model.Nominal.U = [0;0;0];
+mpc_toolbox.Model.Nominal.Y = [0;0;0];
 
 %% Constraints
 % Specify constraints for the MPC controller inputs and outputs.
 % If the 'rest' variable is True, set hard constraints for the control inputs and soft constraints for the plant outputs.
 % Otherwise, set no constraints for inputs or outputs.
 if rest == true
-    InUmx=[0.05 0.05]; % maximum control increment
+    InUmx=[0.05 0.05 0.05]; % maximum control increment
     InUmn=-InUmx; % minimum control increment
-    Umx=[0.5 0.5]; % maximum control output
-    Umn=-Umx; % minimum control output
-    Ymx=inf*ones(1,2); % maximum plant output
-    Ymn=-inf*ones(1,2); % minimum plant output
+    Umx=[0.5 0.5 0.5]; % maximum control output
+    Umn=-[1 1 1]; % minimum control output
+    Ymx=inf*ones(1,3); % maximum plant output
+    Ymn=-inf*ones(1,3); % minimum plant output
+else
+    InUmx=inf*ones(mu,1);
+    InUmn=-InUmx;
+    Umx=inf*ones(mu,1);
+    Umn=-Umx;
+    Ymx=inf*ones(my,1);
+    Ymn=-Ymx;
 end
 
 %% specify constraints for MV and MV Rate
@@ -144,10 +148,9 @@ for i = 1:my
     mpc_toolbox.OV(i).Max = Ymx(i);
 end
 
-
 %% specify simulation options
 % Set simulation options for the MPC controller using the 'mpcsimopt' function.
-options = mpcsimopt();
+options = mpcsimopt(mpc_toolbox);
 options.RefLookAhead = 'off';
 options.MDLookAhead = 'off';
 options.Constraints = 'on';
@@ -155,7 +158,7 @@ options.OpenLoop = 'off';
 
 %% MPC Tuning algorithm
 if tuning == true
-    w=[0.1 0.50]; %Pesos para la curva de pareto
+    w=[0.05 0.40 0.55]; %Pesos para la curva de pareto
     tic
         [mpc_toolbox,scale,delta,lambda,N,Nu,Fob] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
     toc
@@ -182,10 +185,12 @@ else
 end
 
 %% Variables
-ylab{1}='overhead product mole fractions of methanol,';
-ylab{2}='bottom product mole fractions of methanol,';
-ulab{1}='reflux steam flow rates';
-ulab{2}='reboiler steam flow rates';
+ylab{1}='Top end point composition';
+ylab{2}='Side end point composition';
+ylab{3}='Bottoms reflux temperature';
+ulab{1}='Top drawn flow rate';
+ulab{2}='Side drawn flow rate';
+ulab{3}='Bottoms reflux heat duty';
 
 %% Open Loop Response
 % the MPC, in a given Pareto front, finds an optimal trajectory (open loop)
@@ -212,7 +217,7 @@ inK = 1; % Setpoint placed at instant 1
 
 % Scale the signals using L and R matrices
 r_ma = L*r_ma;
-mdv_ma = zeros(1, nit_open);
+%mdv = R\mdv;
 
 % Reference response with which tuning parameters were found
 Yref_ma = lsim(Prefz, r_ma, t, 'zoh');
@@ -223,7 +228,7 @@ for i = 1:ny
     sel(i) = 1; % Activate setpoint for controlled variable i
     try
         % Solve MPC in open loop
-        [Xy1, Xu1, ~, Xyma1, Xuma1] = closedloop_toolbox(mpc_toolbox, r_ma.*sel,mdv_ma, max(N), max(Nu), delta, lambda, nit_open);
+        [Xy1, Xu1, ~, Xyma1, Xuma1] = closedloop_toolbox(mpc_toolbox, r_ma.*sel,mdv, max(N), max(Nu), delta, lambda, nit_open);
         % Store responses in vectors for later plotting
         Xy(i, :) = Xy1(i, :); % Response of controlled variable of conventional MPC
         Xu(i, :) = Xu1(i, :); % Response of manipulated variable of conventional MPC
@@ -263,14 +268,13 @@ mpc_toolbox.Weights.OV = delta;
 mpc_toolbox.Weights.MVRate = lambda;
 mpc_toolbox.Weights.ECR = 10000;
 
-
 % Scale the signals using L and R matrices
 r = row2col(L*Xsp);
 % v = row2col(R\mdv);
 
 %Define an actual plant model which differs from the predicted model
-real_plant = L * Ps * R;
-plant = setmpcsignals(real_plant,MV=[1;2],MD=[3]);
+real_plant = L * Psr * R;
+plant = setmpcsignals(real_plant,MV=[1;2;3]);
 
 %Create and configure a simulation option set.
 options = mpcsimopt(mpc_toolbox);
@@ -278,21 +282,20 @@ options.Model = plant;
 
 % Simulate the controller.
 if simulink == false
-    [y,t,u,xp] = sim(mpc_toolbox,nit,r,mdv,options);
+    [y,t,u,xp] = sim(mpc_toolbox,nit,r,[],options);
     % Unscaled the vectors
     y = row2col(L\y');
-    u = row2col(Ru*u');
+    u = row2col(R*u');
     r = row2col(L\r');
 else
-    sim('MPC_WoodBerry')
+    sim('MPC_Shell3x3')
     Yref = lsim(Pref,r,t,'zoh'); 
 end
 
-
 for i = 1:my
     figure(20)
-    subplot(2,1,i); plot(t,u(:,i),'linewidth',2),grid;ylabel(['MV' num2str(i)])
+    subplot(3,1,i); plot(t,u(:,i),'linewidth',2),grid;ylabel(['MV' num2str(i)])
     figure(21)
-    subplot(2,1,i); plot(t,r(:,i),'--',t,y(:,i),t,Yref(:,i),':','linewidth',2),grid;ylabel(['MO' num2str(i)])
+    subplot(3,1,i); plot(t,r(:,i),'--',t,y(:,i),t,Yref(:,i),':','linewidth',2),grid;ylabel(['MO' num2str(i)])
 end
 
