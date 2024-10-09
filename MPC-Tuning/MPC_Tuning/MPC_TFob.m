@@ -61,20 +61,30 @@ while kk==1 % Loop until stop criterion is met
     options = Par.opContr; % Optimization options for fgoalattain function
     %options = optimoptions('fgoalattain','Display','iter');
     options.EqualityGoalCount = length(Par.w); % The number of objectives that should be as near as possible to the goals
-    goal = 0.001*ones(1,my); % Goal vector
+    %goal = 0.001*ones(1,my); % Goal vector
     
-    R=@(x)GAM_fun(x,Par); % Objective function for GAM algorithm
-    [XOt,~,attainfactor] = fgoalattain(R,Par.x0,goal,Par.w,[],[],[],[],Par.lb1,Par.ub1,[],options); % Call fgoalattain function to solve multi-objective optimization problem
-    
-    % The attainment factor indicates the level of goal achievement. 
-    % A negative attainment factor indicates over-achievement, positive 
-    % indicates under-achievement.
-    
-    if attainfactor < 0 % If over-achievement
-        disp(['over-achievement (Logro Alcanzado)=',num2str(attainfactor)]);
-    else % If under-achievement
-        disp(['under-achievement (Logro NO Alcanzado)=',num2str(attainfactor)]);
+    % Define constants for minimum and maximum goals
+    min_goal = 0.001; % Minimum acceptable error
+    max_goal = 0.05;  % Maximum tolerable error
+
+    % Calculate goal based on user-defined weights (Par.w)
+    goal = min_goal + (max_goal - min_goal) * Par.w;
+
+    % Objective function for the optimization
+    R = @(x) GAM_fun(x, Par); % Replace with your specific GAM objective function
+
+    % Call fgoalattain to solve the multi-objective optimization problem
+    [XOt, ~, attainfactor] = fgoalattain(R, Par.x0, goal, Par.w, [], [], [], [], Par.lb1, Par.ub1, [], Par.opContr);
+
+    % Display the attainment factor result
+    if attainfactor < 0
+        disp(['Over-achievement: MPC tuning parameters exceeded the goals. Attainfactor: ', num2str(attainfactor)]);
+    elseif attainfactor == 0
+        disp(['Exact achievement: MPC tuning parameters met the goals exactly. Attainfactor: ', num2str(attainfactor)]);
+    else
+        disp(['Under-achievement: MPC tuning parameters did not meet the goals. Attainfactor: ', num2str(attainfactor)]);
     end
+
     
     %Suppose the user has set an initial weight to zero for any output variables (OV).
     %In that case, it is considered that he wishes to work by bands for that 

@@ -268,10 +268,9 @@ mpc_toolbox.Weights.ECR = 10000;
 r = row2col(L*Xsp);
 % v = row2col(R\mdv);
 
-%v = row2col(R\mdv);
-real_plant = L * Ps * R;
 
 %Define an actual plant model which differs from the predicted model
+real_plant = L * Ps * R;
 plant = setmpcsignals(real_plant,MV=[1;2],MD=[3]);
 
 %Create and configure a simulation option set.
