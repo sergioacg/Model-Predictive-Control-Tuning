@@ -23,16 +23,13 @@ datetime % Displays the current date and time
 %true: find the tuning parameters, false: use .mat file to load the tuning parameters.
 tuning = true; 
 rest = true; % false: Without constraints; true: With constraints
-caso = 1; % 1: Case 1 (fast); 2: Case 2 (slow)
+caso = 2; % 1: Case 1 (fast); 2: Case 2 (slow)
 nominal = true; % true: Nominal case; false: Model error case
 lineal = true; % Linear model used in MPCTuning
-simulink = false; %Simulate the process with Simulink (true) / Matlab (false)
+simulink = true; %Simulate the process with Simulink (true) / Matlab (false)
 
 
 addpath('MPC_Tuning') % Adds the 'MPC_Tuning' folder to the Matlab path
-
-deltak = 0.0; % Fixed value of uncertainty in the gain
-deltaL = 0; % Fixed value of uncertainty in the delay
 
 %% Model error of the Shell column (To use it in a real plant)
 if nominal == true
@@ -62,11 +59,7 @@ Ps.iodelay=Ls;
 
 % Sampling Period and Number of iterations
 Ts=4.0;
-nit=400;
-
-% Model uncertainties
-Ps=Ps*(1+deltak);
-Ps.iodelay=Ls+deltaL;
+nit=500;
 
 % Discrete-time Model
 Pz=c2d(Ps,Ts,'zoh');
@@ -94,9 +87,9 @@ end
 
 %% Setpoint for the Shell example
 inK=10;
-Xsp(1,inK:80) = 0.2;Xsp(1,80:200) = 0;Xsp(1,200:300) = 0.1;Xsp(1,300:400) = 0.0;
-Xsp(2,inK:80) = 0.2;Xsp(2,80:200) = 0.4;Xsp(2,200:300) = 0.3;Xsp(2,300:400) = 0.0;
-Xsp(3,inK:80) = 0.2;Xsp(3,80:200) = 0.1;Xsp(3,200:300) = 0.0;Xsp(3,300:400) = 0.0;
+Xsp(1,inK:80) = 0.2;Xsp(1,80:200) = 0;Xsp(1,200:400) = 0.1;Xsp(1,400:500) = 0.0;
+Xsp(2,inK:80) = 0.2;Xsp(2,80:200) = 0.4;Xsp(2,200:400) = 0.3;Xsp(2,400:500) = 0.0;
+Xsp(3,inK:80) = 0.2;Xsp(3,80:200) = 0.1;Xsp(3,200:400) = 0.0;Xsp(3,400:500) = 0.0;
 
 %% Specify the MD vector
 mdv = zeros(nit,0); %400×0 empty double matrix
@@ -279,6 +272,14 @@ mpc_toolbox.Weights.ECR = 10000;
 r = row2col(L*Xsp);
 % v = row2col(R\mdv);
 
+%Define an actual plant model which differs from the predicted model
+real_plant = L * Psr * R;
+plant = setmpcsignals(real_plant,MV=[1;2;3]);
+
+%Create and configure a simulation option set.
+options = mpcsimopt(mpc_toolbox);
+options.Model = plant;
+
 % Simulate the controller.
 if simulink == false
     [y,t,u,xp] = sim(mpc_toolbox,nit,r,[],options);
@@ -290,7 +291,6 @@ else
     sim('MPC_Shell3x3')
     Yref = lsim(Pref,r,t,'zoh'); 
 end
-
 
 for i = 1:my
     figure(20)

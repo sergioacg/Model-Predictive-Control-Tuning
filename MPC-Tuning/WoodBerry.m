@@ -26,7 +26,7 @@ rest = true; % false: Without constraints; true: With constraints
 caso = 1; % 1: Case 1 (fast); 2: Case 2 (slow)
 nominal = true; % true: Nominal case; false: Model error case
 lineal = true; % Linear model used in MPCTuning
-simulink = false; %Simulate the process with Simulink (true) / Matlab (false)
+simulink = true; %Simulate the process with Simulink (true) / Matlab (false)
 
 addpath('MPC_Tuning') % Adds the 'MPC_Tuning' folder to the Matlab path
 
@@ -54,11 +54,7 @@ Ds.iodelay = [8.1; 3.4];
 
 % Sampling Period and Number of iterations
 Ts=1.0;
-nit=200;
-
-% Model uncertainties
-Gs=Gs*(1+deltak);
-Gs.iodelay=[0 1;1 0]+deltaL;
+nit=400;
 
 Ps=[Gs Ds];
 
@@ -73,7 +69,7 @@ ny = 2;
 if caso == 1
     Pref=[tf(1,[10 1]),0;0,tf(1,[7 1])];
 else
-    Pref=[tf(1,[25 1]),0;0,tf(1,[20 1])];
+    Pref=[tf(1,[15 1]),0;0,tf(1,[12 1])];
 end
 Pref.iodelay=[1,0;0,1];
 Prefz=c2d(Pref,Ts,'zoh');
@@ -90,12 +86,12 @@ end
 %% Setpoint for the Shell example
 inK=10;
 Xsp(1,inK:nit) = 0.8;
-Xsp(2,60:nit) = 0.5;
+Xsp(2,200:nit) = 0.5;
 
 
 %% Specify the MD vector
 mdv = zeros(nit,1);
-mdv(140:end) = -0.25;
+mdv(300:end) = -0.25;
  
 % Reference response for compare in GAM algorithm
 t = 0:Ts:(nit-1)*Ts;            % Time vector for simulation    
@@ -268,10 +264,8 @@ mpc_toolbox.Weights.ECR = 10000;
 r = row2col(L*Xsp);
 % v = row2col(R\mdv);
 
-%v = row2col(R\mdv);
-real_plant = L * Ps * R;
-
 %Define an actual plant model which differs from the predicted model
+real_plant = L * Ps * R;
 plant = setmpcsignals(real_plant,MV=[1;2],MD=[3]);
 
 %Create and configure a simulation option set.
