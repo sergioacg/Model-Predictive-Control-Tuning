@@ -1,4 +1,4 @@
-function [N,Nu,lambda,delta,Fvns,Fvf] = MPC_TFob(Par)
+function [N,Nu,lambda,delta,ECR,Fvns,Fvf] = MPC_TFob(Par)
 % This function calculates the tuning parameters for an MPC controller using a hybrid combination of two optimization algorithms. The decision variables of the algorithm are x=[gamma,N,Nu,delta,lambda]. The variables N and Nu are strictly integer variables to be found by the VNS algorithm. The real delta and lambda variables are the diagonal elements of the weight matrices that will be solved by the GAM.
 %
 % Inputs:
@@ -61,11 +61,11 @@ while kk==1 % Loop until stop criterion is met
     options = Par.opContr; % Optimization options for fgoalattain function
     %options = optimoptions('fgoalattain','Display','iter');
     options.EqualityGoalCount = length(Par.w); % The number of objectives that should be as near as possible to the goals
-    %goal = 0.001*ones(1,my); % Goal vector
+    goal = 0.001*ones(1,my); % Goal vector
     
     % Define constants for minimum and maximum goals
     min_goal = 0.001; % Minimum acceptable error
-    max_goal = 0.05;  % Maximum tolerable error
+    max_goal = 0.1;  % Maximum tolerable error
 
     % Calculate goal based on user-defined weights (Par.w)
     goal = min_goal + (max_goal - min_goal) * Par.w;
@@ -110,9 +110,16 @@ while kk==1 % Loop until stop criterion is met
         delta=abs(Par.delta);
         lambda=abs(XOt(1:my));
     end
+
+    if any(Par.mpcobj.Weights.OV == 0)
+        ECR = abs(XOt(end))*Par.ECR; 
+    else
+        ECR = Par.ECR; 
+    end
     
     Fgam=round(sum(F),2); % Calculate GAM cost
-    disp(['Fgam=',num2str(Fgam),'; Delta=[',num2str(delta),']; Lambda=[',num2str(lambda),']']);
+    disp(['Fgam=',num2str(Fgam),'; Delta=[',num2str(delta),...
+        ']; Lambda=[',num2str(lambda),']; ECR=[',num2str(ECR),']']);
     
     % Compare to the previous GAM cost 
     if Fgam>=Fvf   % If the GAM cost is higher, increase the stop criterion variable
@@ -122,6 +129,7 @@ while kk==1 % Loop until stop criterion is met
         % Save the new parameters
         Par.lambda=lambda;
         Par.delta=delta;
+        Par.ECR = ECR;
     end
 
     %% VNS Algorithm
@@ -135,14 +143,15 @@ while kk==1 % Loop until stop criterion is met
         Par.Xv2=Xv2; % Update binary vector for control horizon
     end
 
-    if  hi>0   % Stop criterion
+    if  hi>2   % Stop criterion
         kk=2; % Set kk to 2 to exit loop
     end
 
 end % End of while loop
 
 Par.lambda=lambda; % Update lambda weights in parameter structure
-Par.delta=delta; % Update delta weights in parameter structure    
+Par.delta=delta; % Update delta weights in parameter structure 
+Par.ECR = ECR;
     
 disp(['Fvg=',num2str(Fvf)]); % Display GAM cost
 disp(['Gamma:',num2str(XOt(1))]); % Display gamma value
@@ -150,5 +159,6 @@ N=Par.N; % Get prediction horizon from parameter structure
 Nu=Par.Nu; % Get control horizon from parameter structure
 lambda=Par.lambda; % Get lambda weights from parameter structure
 delta=Par.delta; % Get delta weights from parameter structure
+ECR = Par.ECR;
 
 end

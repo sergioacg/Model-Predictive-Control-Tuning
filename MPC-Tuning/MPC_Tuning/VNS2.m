@@ -39,6 +39,7 @@ nit = Par.nit;  % number of iterations
 Yref = Par.Yref;    % reference signal
 lambda = Par.lambda;    % weight of control horizon
 delta = Par.delta;  % weight of control increments
+ECR = Par.ECR;
 nbp = Par.nbp;  % index of last binary digit
 inK = 10;   % delay between input and output in time steps
 Ts = Par.Ts;    % sampling time
@@ -150,7 +151,7 @@ while ii<=3
                             sel(i)=1;
                             try
                                 if lineal ==1
-                                    [Xy1,Xu1,~,Xyma1,Xuma1] = closedloop_toolbox(mpcobj,Xsp.*sel,mdv,max(N),max(Nu),delta,lambda,nit);
+                                    [Xy1,Xu1,~,Xyma1,Xuma1] = closedloop_toolbox(mpcobj,Xsp.*sel,mdv,max(N),max(Nu),delta,lambda,ECR,nit);
                                 else
                                     [Xy1,Xu1,Xyma1,Xuma1] = closedloop_toolbox_nmpc(mpcobj,model,init,Xsp.*sel,max(N),max(Nu),delta,lambda,nit);
                                 end
@@ -165,7 +166,7 @@ while ii<=3
                         end
                     else
                         %Non-square system
-                        [Xy,Xu,~,Xyma,Xuma] = closedloop_toolbox(mpcobj,Xsp,mdv,max(N),max(Nu),delta,lambda,nit);
+                        [Xy,Xu,~,Xyma,Xuma] = closedloop_toolbox(mpcobj,Xsp,mdv,max(N),max(Nu),delta,lambda,ECR,nit);
                     end
                     
                     %% error

@@ -1,4 +1,4 @@
-function [y,u,t,ys,uopt] = closedloop_toolbox(mpc_toolbox,r,v,N,Nu,delta,lambda,nit)
+function [y,u,t,ys,uopt] = closedloop_toolbox(mpc_toolbox,r,v,N,Nu,delta,lambda,ECR,nit)
 % Calculates the closed-loop response of an MPC controller using the Matlab Toolbox.
 %
 % [y,u,t,ys,uopt] = closedloop_toolbox(mpc_toolbox,r,N,Nu,delta,lambda,nit)
@@ -41,6 +41,7 @@ mpc_toolbox.ControlHorizon = max(Nu);
 %% Specify weights
 mpc_toolbox.Weights.OV = delta;
 mpc_toolbox.Weights.MVRate = lambda;
+mpc_toolbox.Weights.ECR = ECR;
 
 %% Closed Loop
 % Convert r to column vector

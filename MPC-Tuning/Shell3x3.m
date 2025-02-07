@@ -160,7 +160,7 @@ options.OpenLoop = 'off';
 if tuning == true
     w=[0.05 0.40 0.55]; %Pesos para la curva de pareto
     tic
-        [mpc_toolbox,scale,delta,lambda,N,Nu,Fob] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
+        [mpc_toolbox,scale,delta,lambda,N,Nu,Fob, ECR] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
     toc
     L = scale.L;
     R = scale.R;
@@ -177,6 +177,7 @@ else
     N = Tuning_Parameters.N; Nu = Tuning_Parameters.Nu;
     delta = Tuning_Parameters.delta;
     lambda = Tuning_Parameters.lambda;
+    %ECR = 10000;%Tuning_Parameters.ECR;
     L = Tuning_Parameters.scale.L;
     R = Tuning_Parameters.scale.R;
     Ru = Tuning_Parameters.scale.Ru;
@@ -228,7 +229,7 @@ for i = 1:ny
     sel(i) = 1; % Activate setpoint for controlled variable i
     try
         % Solve MPC in open loop
-        [Xy1, Xu1, ~, Xyma1, Xuma1] = closedloop_toolbox(mpc_toolbox, r_ma.*sel,mdv, max(N), max(Nu), delta, lambda, nit_open);
+        [Xy1, Xu1, ~, Xyma1, Xuma1] = closedloop_toolbox(mpc_toolbox, r_ma.*sel,mdv, max(N), max(Nu), delta, lambda, ECR, nit_open);
         % Store responses in vectors for later plotting
         Xy(i, :) = Xy1(i, :); % Response of controlled variable of conventional MPC
         Xu(i, :) = Xu1(i, :); % Response of manipulated variable of conventional MPC
@@ -266,7 +267,7 @@ mpc_toolbox.ControlHorizon = max(Nu);
 %% specify weights
 mpc_toolbox.Weights.OV = delta;
 mpc_toolbox.Weights.MVRate = lambda;
-mpc_toolbox.Weights.ECR = 10000;
+mpc_toolbox.Weights.ECR = ECR;
 
 % Scale the signals using L and R matrices
 r = row2col(L*Xsp);

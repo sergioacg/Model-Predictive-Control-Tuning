@@ -201,7 +201,7 @@ if tuning == true
     %w=[0.0001 0.0001 0.5 0.5 0.5 0.5 0.5]; %pareto
     w=[0.0001 0.0001 1 0.5 1 0.5 1];
     tic
-        [mpc_toolbox,scale,delta,lambda,N,Nu,Fob] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
+        [mpc_toolbox,scale,delta,lambda,N,Nu,Fob,ECR] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
     toc
     L = scale.L;
     R = scale.R;
@@ -218,6 +218,7 @@ else
     N = Tuning_Parameters.N; Nu = Tuning_Parameters.Nu;
     delta = Tuning_Parameters.delta;
     lambda = Tuning_Parameters.lambda;
+    ECR = Tuning_Parameters.ECR;
     mpc_toolbox = Tuning_Parameters.mpcobj;
     L = Tuning_Parameters.scale.L;
     R = Tuning_Parameters.scale.R;
@@ -258,7 +259,7 @@ mdv_ma(:,1:end) = 0.5;
 mdv_ma = Rv\mdv_ma;
 
 %Non-square system
-[Xy,Xu,~,Xyma,Xuma] = closedloop_toolbox(mpc_toolbox, r_ma,mdv_ma,max(N),max(Nu),delta,lambda,nit_open);
+[Xy,Xu,~,Xyma,Xuma] = closedloop_toolbox(mpc_toolbox, r_ma,mdv_ma,max(N),max(Nu),delta,lambda,ECR,nit_open);
 
 ch = max(max(Xuma', Xu')); % Variable used to plot length of horizons in graph
 figure

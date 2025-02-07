@@ -55,30 +55,34 @@ end
 if nrm==0 % If not normalized system
     delta=abs(X(1:ny));   % Reference weighting parameter
     lambda=abs(X(ny+1:ny+nu)); % Control weighting parameter
+    ECR = Par.ECR;                  % Weights.ECR
     % Suppose the user has set an initial weight to zero for any output variables (OV).
     % In that case, it is considered that he wishes to work by bands for that 
     % variable, which will depend on the weights of the associated equal concern
     % for relaxation (ECR) to each variable constraint.
     if lineal == 1
-        if any(mpcobj.Weights.OV == 0)
+        if any(mpcobj.Weights.OV == 0) %by bands
             sft = find(mpcobj.Weights.OV == 0);
             delta(sft) = 0;
+            ECR    = abs(X(end))*Par.ECR;  % Rewrite Weights.ECR (include as decision variable)
         end
     else
         if any(mpcobj.Weights.OutputVariables == 0)
             sft = find(mpcobj.Weights.OutputVariables == 0);
             delta(sft) = 0;
+            ECR    = abs(X(end))*Par.ECR;                  % Weights.ECR
         end
     end
 else % If normalized system
     delta=abs(Par.delta);
     lambda=abs(X(1:ny));   % Control weighting parameter
+    ECR    = Par.ECR;      % Weights.ECR
 end
 
 %% Closed-loop simulation with internal model
 if lineal ==1 % If linear system
     try
-        [Xy] = closedloop_toolbox(mpcobj,Xsp,mdv,N,Nu,delta,lambda,nit); % Simulate closed-loop response using closedloop_toolbox function
+        [Xy] = closedloop_toolbox(mpcobj,Xsp,mdv,N,Nu,delta,lambda, ECR,nit); % Simulate closed-loop response using closedloop_toolbox function
     catch
         fprintf('Error in closed-loop simulation\n');
     end
@@ -106,12 +110,34 @@ end
 %     end
 % end
 
-%% Error between closed-loop response and reference trajectory
-errFA=Xy-Yref; % Calculate error between closed-loop response and reference trajectory
-J1=(diag(errFA*errFA')); % Calculate squared error
+
 
 %% Objective function value
-F=J1; % Set objective function value to squared error
+if any(delta == 0) % If working with bands
+    % Initialize upper and lower bands for each output variable (OV)
+    band_upper = zeros(Par.ny, 1); % Upper band for each output
+    band_lower = zeros(Par.ny, 1); % Lower band for each output
+
+    % Extract bands from MPC object
+    for i = 1:Par.ny
+        band_upper(i) = Par.mpcobj.OV(i).Max; % Maximum constraint for output i
+        band_lower(i) = Par.mpcobj.OV(i).Min; % Minimum constraint for output i
+    end
+
+    % Check if the closed-loop response violates the bands in steady state
+    violations_upper = max(0, Xy - band_upper); % Violations above the upper band
+    violations_lower = max(0, band_lower - Xy); % Violations below the lower band
+
+    % Calculate penalty for violations
+    J_band = sum(violations_upper'.^2 + violations_lower'.^2)'; % Squared penalty for violations    
+    F = J_band; % Penalize based on band violations
+else % If working with reference trajectory
+    % Error between closed-loop response and reference trajectory
+    errFA=Xy-Yref; % Calculate error between closed-loop response and reference trajectory
+    J1=(diag(errFA*errFA')); % Calculate squared error
+    F = J1; % Penalize based on squared error
+end
+
 g=F; % Set output g to objective function value
 h=[]; % No equality constraints
 

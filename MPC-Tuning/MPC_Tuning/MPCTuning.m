@@ -1,4 +1,4 @@
-function [mpcobj, scale, delta, lambda, Np, Nun, Fob] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Yref, varargin)
+function [mpcobj, scale, delta, lambda, Np, Nun, Fob, ECR] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Yref, varargin)
 % MPCTuning: Find the optimal parameters for (N)MPC algorithm
 %
 % [mpcobj, scale, delta, lambda, Np, Nun] = MPCTuning(mpcobj_proj, Sp, linear, w, fi, Pref) 
@@ -297,10 +297,16 @@ fo(1:my)=0; % Initialize Utopia solution vector
 % Initial Conditions
 
 %% fgoalattain
-x0=[ones(1,my).*q0 ones(1,ny).*w0]; % Initial guess for optimization
-% Constraints
-lb1=[ones(1,my)*1e-5 ones(1,ny)*1e-5]; % Lower bound for optimization variables
-
+%if detect an MPC by bands
+if any(mpcobj.Weights.OV == 0)
+    x0=[ones(1,my).*q0 ones(1,ny).*w0 1]; % Initial guess for optimization
+    % Constraints
+    lb1=[ones(1,my)*1e-5 ones(1,ny)*1e-5 0]; % Lower bound for optimization variables
+else
+    x0=[ones(1,my).*q0 ones(1,ny).*w0]; % Initial guess for optimization
+    % Constraints
+    lb1=[ones(1,my)*1e-5 ones(1,ny)*1e-5]; % Lower bound for optimization variables
+end 
 ub1=[]; % No upper bound for optimization variables
 
 % Parameters
@@ -324,6 +330,7 @@ Par.N=N;            % Prediction horizon
 Par.Nu=Nu;          % Control horizon
 Par.delta=delta;    % Reference tracking weight
 Par.lambda=lambda;  % Reference tracking control action weight
+Par.ECR = mpcobj.Weights.ECR;    % 
 Par.nit=fi;         % Predefined tuning horizon
 Par.Fo=fo;          % Utopia point
 Par.w=w;            % Weighting vector of GAM algorithm
@@ -340,7 +347,7 @@ Par.Ts = Ts;        % Sampling time
 Par.mpcobj = mpcobj;% MPC object
 
 %% Tuning Algorithm
-[N,Nu,lambda,delta,Fvns,Fgam] = MPC_TFob(Par); % Call MPC_TFob function to tune MPC
+[N,Nu,lambda,delta,ECR,Fvns,Fgam] = MPC_TFob(Par); % Call MPC_TFob function to tune MPC
 
 mpcobj.ControlHorizon = 1; %Initialized value to avoid warnings
 %% specify prediction horizon
@@ -351,11 +358,11 @@ mpcobj.ControlHorizon = max(Nu);
 if linear == 1
     mpcobj.Weights.OV = delta;
     mpcobj.Weights.MVRate = lambda;
-    mpcobj.Weights.ECR = 10000;
 else
     mpcobj.Weights.OutputVariables = delta;
     mpcobj.Weights.ManipulatedVariablesRate = lambda;
 end
+mpcobj.Weights.ECR = ECR;
 
 % Results
 Np=max(N); % Prediction horizon
@@ -365,6 +372,7 @@ disp(['N=',num2str(N),';']); % Display prediction horizon
 disp(['Nu=',num2str(Nu),';']); % Display control horizon
 disp(['delta=[',num2str(delta),'];']); % Display delta weights
 disp(['lambda=[',num2str(lambda),'];']); % Display lambda weights
+disp(['ECR=[',num2str(ECR),'];']); % Display ECR weights
 disp(['Fob=[Fvns;Fgam]=[',num2str(Fob'),'];']); % Display objective function values
  
  % Get the name of the main script
@@ -376,6 +384,7 @@ Tuning_Parameters.N = Np; % Store prediction horizon in structure
 Tuning_Parameters.Nu = Nun; % Store control horizon in structure
 Tuning_Parameters.delta = delta; % Store delta weights in structure
 Tuning_Parameters.lambda = lambda; % Store lambda weights in structure
+Tuning_Parameters.ECR = ECR;
 Tuning_Parameters.scale = scale; %scale matrices
 Tuning_Parameters.date = datetime; % Store current date and time in structure
 save([callerName,'_Tuning_', datestr(datetime,'ddmmmyyyy_HH_MM')], 'Tuning_Parameters') % Save tuning parameters to file
