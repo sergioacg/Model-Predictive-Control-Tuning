@@ -41,13 +41,17 @@ X0(1:m+n)=0.1;
 
 % opContr = optimset('Algorithm','sqp','UseParallel',0,...
 %                    'display','off','TolX',1e-6,'TolFun',1e-7,...
-%                    'TolCon',1e-5,'MaxFunEvals',8000); 
+%                    'TolCon',1e-5,'MaxFunEvals',8000);
+
+options = optimoptions('fmincon', 'MaxIterations', 5000, ...
+        'MaxFunctionEvaluations', 10000);
 
 J=@(X)funobj(X,K); % Objective function
 
+
 % Minimize objective function
 % [Xt,~,fminflag]=fmincon(J,X0,A,B,Ae,Be,li,ls,[],opContr);
-[Xt,~,fminflag]=fmincon(J,X0,A,B,Ae,Be,li,ls,[]);
+[Xt,~,fminflag]=fmincon(J,X0,A,B,Ae,Be,li,ls,[],options);
 
 if exist('fminflag','var')
 %     disp('fminflag')

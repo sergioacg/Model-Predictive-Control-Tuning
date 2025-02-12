@@ -10,12 +10,12 @@
 % parameters based on the implementation.
 %
 % Cite as:
-% Giraldo, Sergio A. C., Pr�amo A. Melo, and Argimiro R. Secchi. 2022.
+% Giraldo, Sergio A. C., Príamo A. Melo, and Argimiro R. Secchi. 2022.
 % "Tuning of Model Predictive Controllers Based on Hybrid Optimization"
 % Processes 10, no. 2: 351. https://doi.org/10.3390/pr10020351
 %
 % Author:
-% Sergio Andres Casta�o Giraldo
+% Sergio Andres Castaño Giraldo
 % 2023
 % https://controlautomaticoeducacion.com/
 %
@@ -27,7 +27,7 @@ datetime % Displays the current date and time
 
 %% ********* Code Configuration Flags ************
 %true: find the tuning parameters, false: use .mat file to load the tuning parameters.
-tuning = true; 
+tuning = false; 
 rest = true; % false: Without constraints; true: With constraints
 nominal = true; % true: Nominal case; false: Model error case
 lineal = true; % Linear model used in MPCTuning
@@ -296,22 +296,32 @@ end
 r = row2col(L*Xsp);
 v = row2col(Rv\mdv);
 
-% Define the actual plant model, which differs from the predicted model
+%Define an actual plant model which differs from the predicted model
 real_plant = L * Psr * R;
-plant = setmpcsignals(real_plant, MV=[1;2;3], MD=[4;5]);
+plant = setmpcsignals(real_plant,MV=[1;2;3],MD=[4;5]);
 
-% Create and configure a simulation options set
+%Create and configure a simulation option set.
 options = mpcsimopt(mpc_toolbox);
+options.Model = plant;
 
-% Simulate the controller
-try
-    options.Model = plant; % Using the continuous-time plant
-    [y, t, u, xp] = sim(mpc_toolbox, nit, r, v, options);
-catch
-    % If a discrepancy exists in the states, try using the discrete version of the plant
-    options.Model = c2d(plant, Ts, 'zoh');  % Using the discrete-time plant
-    [y, t, u, xp] = sim(mpc_toolbox, nit, r, v, options);
-end
+% deja el modelo igual a la planta
+% mpc_toolbox.Model.Plant = plant;
+
+% Simulate the controller.
+[y,t,u,xp] = sim(mpc_toolbox,nit,r,v,options);
+% [y,t,u,xp] = sim(mpc_toolbox,nit,r,v);
+
+%% Define an actual plant model which differs from the predicted model
+real_plant = L * Psr * R;
+real_plant = setmpcsignals(real_plant, MV=[1;2;3], MD=[4;5]); % Misma agrupación de señales
+plant = c2d(real_plant, Ts, 'zoh'); % Discretizar con el mismo Ts
+
+%% Configurar opciones de simulación
+options = mpcsimopt(mpc_toolbox);
+options.Model = plant; 
+
+%% Simular controlador
+[y,t,u,xp] = sim(mpc_toolbox,nit,r,v,options);
 
 % Unscaled the vectors
 y = row2col(L\y');

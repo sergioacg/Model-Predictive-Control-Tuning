@@ -118,9 +118,7 @@ while kk==1 % Loop until stop criterion is met
     end
     
     Fgam=round(sum(F),2); % Calculate GAM cost
-    disp(['Fgam=',num2str(Fgam),'; Delta=[',num2str(delta),...
-        ']; Lambda=[',num2str(lambda),']; ECR=[',num2str(ECR),']']);
-    
+        
     % Compare to the previous GAM cost 
     if Fgam>=Fvf   % If the GAM cost is higher, increase the stop criterion variable
         hi=hi+1;
@@ -130,6 +128,8 @@ while kk==1 % Loop until stop criterion is met
         Par.lambda=lambda;
         Par.delta=delta;
         Par.ECR = ECR;
+        disp(['Fgam=',num2str(Fgam),'; Delta=[',num2str(delta),...
+        ']; Lambda=[',num2str(lambda),']; ECR=[',num2str(ECR),']']);
     end
 
     %% VNS Algorithm

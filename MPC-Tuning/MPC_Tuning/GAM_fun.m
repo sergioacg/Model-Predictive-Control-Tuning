@@ -85,12 +85,14 @@ if lineal ==1 % If linear system
         [Xy] = closedloop_toolbox(mpcobj,Xsp,mdv,N,Nu,delta,lambda, ECR,nit); % Simulate closed-loop response using closedloop_toolbox function
     catch
         fprintf('Error in closed-loop simulation\n');
+        Xy = ones(ny,nit)*inf;
     end
 else % If nonlinear system
     try
         Xy = closedloop_toolbox_nmpc(mpcobj,model,init,Xsp,N,Nu,delta,lambda,nit); % Simulate closed-loop response using closedloop_toolbox_nmpc function
     catch
         fprintf('Error in closed-loop simulation\n');
+        Xy = ones(ny,nit)*inf;
     end
 end
 
@@ -100,15 +102,15 @@ end
 % degrees of freedom, what we are trying to do is that Yref has at least the 
 % exact direction of the output of the MPC controller calculated with the 
 % current tuning parameters at the present instant of the optimization algorithm.
-% if any(delta == 0)
-%     for i=1:ny
-%         if delta(i) == 0
-%             if Xy(i,end) < 0
-%                 Yref(i,:) = -1*Yref(i,:);
-%             end
-%         end
-%     end
-% end
+if any(delta == 0)
+    for i=1:ny
+        if delta(i) == 0
+            if abs(max(Xy(i,:))) < abs(min(Xy(i,:)))
+                Yref(i,:) = -1*Yref(i,:);
+            end
+        end
+    end
+end
 
 
 

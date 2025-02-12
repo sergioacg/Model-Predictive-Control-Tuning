@@ -174,10 +174,9 @@ while ii<=3
                     errYref=Xy(:,inK:end)-Yref(:,inK:end);
                     
                     %For validation
-%                     for ki = 1:my
-%                         figure;plot(Temp, Xy(ki,:),Temp, Xyma(ki,:),Temp, Yref(ki,:))
-%                         legend('Xy-closed loop', 'Xyma-open loop', 'Yref-Reference trayectory')
-%                     end
+                    for ki = 1:my
+                        figure;plot(Temp, Xy(ki,:),Temp, Xyma(ki,:),Temp, Yref(ki,:))
+                    end
 
                     %Objectives                    
                     j21=(diag(error2*error2'));
