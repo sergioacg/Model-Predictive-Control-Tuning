@@ -311,7 +311,7 @@ Par.nu=ny;          % Number of inputs
 Par.nd=dy;          % Number of disturbances
 Par.nrm=nrm;        % Flag - Normalized system?
 if linear ==true % If linear model
-    Par.Pz=Pz;         % Discrete transfer function
+    Par.Pz=Pze;         % Discrete transfer function
     Par.dmin=dmin;      % Minimal delay of MIMO system
 else % If nonlinear model
     Par.Pz=model;       % Nonlinear model

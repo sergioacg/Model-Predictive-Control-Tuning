@@ -170,8 +170,8 @@ while ii<=3
                     end
                     
                     %% error
-                    error2=Xy(:,inK:end) - Xyma(:,inK:end);
-                    errYref=Xy(:,inK:end)-Yref(:,inK:end);
+                    error2=Xy(:,1:end) - Xyma(:,1:end);
+                    errYref=Xy(:,1:end)-Yref(:,1:end);
                     
                     %For validation
 %                     for ki = 1:my

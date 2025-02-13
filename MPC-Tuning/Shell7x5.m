@@ -115,7 +115,6 @@ Pref.iodelay=diag(dmin);
 Prefz=c2d(Pref,Ts,'zoh');
 
 %% Setpoint for the Shell example into MPC Tuning algorthm
-inK=10;
 Xsp(1:my,1:nit) = 0; 
 
 %% Specify the MD vector

@@ -89,8 +89,8 @@ end
 
 %% Setpoint for the Shell example
 inK=10;
-Xsp(1,inK:nit) = 0.8;
-Xsp(2,60:nit) = 0.5;
+Xsp(1,1:nit) = 0.8;
+Xsp(2,1:nit) = 0.5;
 
 
 %% Specify the MD vector
@@ -157,7 +157,7 @@ options.OpenLoop = 'off';
 if tuning == true
     w=[0.1 0.50]; %Pesos para la curva de pareto
     tic
-        [mpc_toolbox,scale,delta,lambda,N,Nu,Fob] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
+        [mpc_toolbox,scale,delta,lambda,N,Nu,Fob,ECR] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
     toc
     L = scale.L;
     R = scale.R;
@@ -171,13 +171,15 @@ else
        disp(['User selected ', fullfile(pathname, filename)]);
     end
     load(filename);
-    N = Tuning_Parameters.N; Nu = Tuning_Parameters.Nu;
+    N = Tuning_Parameters.N; 
+    Nu = Tuning_Parameters.Nu;
     delta = Tuning_Parameters.delta;
     lambda = Tuning_Parameters.lambda;
     L = Tuning_Parameters.scale.L;
     R = Tuning_Parameters.scale.R;
     Ru = Tuning_Parameters.scale.Ru;
     Rv = Tuning_Parameters.scale.Rv;
+    ECR = Tuning_Parameters.ECR;
     mpc_toolbox = Tuning_Parameters.mpcobj;
 end
 
@@ -186,6 +188,15 @@ ylab{1}='overhead product mole fractions of methanol,';
 ylab{2}='bottom product mole fractions of methanol,';
 ulab{1}='reflux steam flow rates';
 ulab{2}='reboiler steam flow rates';
+
+%% specify prediction horizon
+mpc_toolbox.PredictionHorizon = max(N);
+%% specify control horizon
+mpc_toolbox.ControlHorizon = max(Nu);
+%% specify weights
+mpc_toolbox.Weights.OV = delta;
+mpc_toolbox.Weights.MVRate = lambda;
+mpc_toolbox.Weights.ECR = 10000;
 
 %% Open Loop Response
 % the MPC, in a given Pareto front, finds an optimal trajectory (open loop)
@@ -223,7 +234,7 @@ for i = 1:ny
     sel(i) = 1; % Activate setpoint for controlled variable i
     try
         % Solve MPC in open loop
-        [Xy1, Xu1, ~, Xyma1, Xuma1] = closedloop_toolbox(mpc_toolbox, r_ma.*sel,mdv_ma, max(N), max(Nu), delta, lambda, nit_open);
+        [Xy1, Xu1, ~, Xyma1, Xuma1] = closedloop_toolbox(mpc_toolbox, r_ma.*sel,mdv_ma, max(N), max(Nu), delta, lambda, ECR, nit_open);
         % Store responses in vectors for later plotting
         Xy(i, :) = Xy1(i, :); % Response of controlled variable of conventional MPC
         Xu(i, :) = Xu1(i, :); % Response of manipulated variable of conventional MPC
@@ -253,15 +264,6 @@ for i = 1:my
     plot(Ts*[inK+Nu(i) inK+Nu(i)], [0 ch(i)], 'Linewidth', 2)
     ylabel(ulab{i}, 'Interpreter', 'latex')
 end
-
-%% specify prediction horizon
-mpc_toolbox.PredictionHorizon = max(N);
-%% specify control horizon
-mpc_toolbox.ControlHorizon = max(Nu);
-%% specify weights
-mpc_toolbox.Weights.OV = delta;
-mpc_toolbox.Weights.MVRate = lambda;
-mpc_toolbox.Weights.ECR = 10000;
 
 
 % Scale the signals using L and R matrices
