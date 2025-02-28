@@ -81,6 +81,8 @@ function [mpcobj, scale, delta, lambda, Np, Nun, Fob, ECR] = MPCTuning(mpcobj_pr
 
 global Fv 
 
+tic
+
 mpcobj = mpcobj_proj;
 ni = nargin; % Number of input arguments
 
@@ -178,8 +180,8 @@ if linear == 1 % If linear model
         mpcobj.OV(i).Min = L(i,i)*mpcobj.OV(i).Min;
         mpcobj.OV(i).Max = L(i,i)*mpcobj.OV(i).Max;
         mpcobj.OV(i).ScaleFactor = L(i,i)*mpcobj.OV(i).ScaleFactor;%new
-        mpcobj.OV(i).MinECR = L(i,i) * mpcobj.OV(i).MinECR;
-        mpcobj.OV(i).MaxECR = L(i,i) * mpcobj.OV(i).MaxECR;
+        % mpcobj.OV(i).MinECR = L(i,i) * mpcobj.OV(i).MinECR;
+        % mpcobj.OV(i).MaxECR = L(i,i) * mpcobj.OV(i).MaxECR;
     end
     mpcobj.Model.Nominal.Y = L*mpcobj.Model.Nominal.Y;
     mpcobj.Model.Nominal.U = R\mpcobj.Model.Nominal.U;
@@ -282,7 +284,7 @@ Xv=[flip(de2bi(Hp,nbp)) flip(de2bi(Hc,nbc))]'; % Convert horizons to binary and 
 
 % Initial horizon
 N(1:my)=Hp; % Set initial prediction horizon to maximum value
-Nu(1:ny)=Hc; % Set initial control horizon to 2
+Nu(1:ny)=2; % Set initial control horizon to 2
 
 % Initial past cost
 Fv=1e30; % Set initial past cost to large value
@@ -295,16 +297,16 @@ fo(1:my)=0; % Initialize Utopia solution vector
 %% fgoalattain
 %if detect an MPC by bands
 if any(mpcobj.Weights.OV == 0)
-    x0=[ones(1,my).*q0 ones(1,ny).*w0 0.7]; % Initial guess for optimization
+    x0=[ones(1,my).*q0 ones(1,ny).*w0 1]; % Initial guess for optimization
     % Constraints
-    lb1=[ones(1,my)*1e-5 ones(1,ny)*1e-5 0]; % Lower bound for optimization variables
+    lb1=[ones(1,my)*1e-7 ones(1,ny)*1e-7 1e-2]; % Lower bound for optimization variables
+    %ub1=[ones(1,my+ny)*inf 1]; % No upper bound for optimization variables
 else
     x0=[ones(1,my).*q0 ones(1,ny).*w0]; % Initial guess for optimization
     % Constraints
-    lb1=[ones(1,my)*1e-5 ones(1,ny)*1e-5]; % Lower bound for optimization variables
+    lb1=[ones(1,my)*1e-7 ones(1,ny)*1e-7]; % Lower bound for optimization variables 
 end 
 ub1=[]; % No upper bound for optimization variables
-
 % Parameters
 Par.ny=my;          % Number of outputs
 Par.nu=ny;          % Number of inputs
@@ -359,6 +361,7 @@ else
     mpcobj.Weights.ManipulatedVariablesRate = lambda;
 end
 mpcobj.Weights.ECR = ECR;
+time_elapsed = toc;
 
 % Results
 Np=max(N); % Prediction horizon
@@ -370,12 +373,14 @@ disp(['delta=[',num2str(delta),'];']); % Display delta weights
 disp(['lambda=[',num2str(lambda),'];']); % Display lambda weights
 disp(['ECR=[',num2str(ECR),'];']); % Display ECR weights
 disp(['Fob=[Fvns;Fgam]=[',num2str(Fob'),'];']); % Display objective function values
- 
+disp(['Elapsed time is ',num2str(time_elapsed),' seconds.']);
+
  % Get the name of the main script
 S = dbstack(); % Get call stack information
 callerName = S(2).name; % Get name of calling script
 str_ver = version;
 ver_match = regexp(str_ver, 'R2\d{3}[ab]', 'match', 'once'); 
+date = datestr(datetime,'ddmmmyyyy_HH_MM_');
 
 Tuning_Parameters.mpcobj = mpcobj;
 Tuning_Parameters.N = Np; % Store prediction horizon in structure
@@ -385,4 +390,8 @@ Tuning_Parameters.lambda = lambda; % Store lambda weights in structure
 Tuning_Parameters.ECR = ECR;
 Tuning_Parameters.scale = scale; %scale matrices
 Tuning_Parameters.date = datetime; % Store current date and time in structure
-save([callerName,'_Tuning_', datestr(datetime,'ddmmmyyyy_HH_MM_'), ver_match], 'Tuning_Parameters') % Save tuning parameters to file
+Tuning_Parameters.time_elapsed = time_elapsed;
+Tuning_Parameters.version = ver_match;
+Tuning_Parameters.date = date;
+
+save([callerName,'_Tuning_', date, ver_match], 'Tuning_Parameters') % Save tuning parameters to file

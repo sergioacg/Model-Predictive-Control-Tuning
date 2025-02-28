@@ -67,7 +67,7 @@ while kk==1 % Loop until stop criterion is met
     min_goal = 0.001; % Minimum acceptable error
     max_goal = 0.1;  % Maximum tolerable error
 
-    % Calculate goal based on user-defined weights (Par.w)
+    %Calculate goal based on user-defined weights (Par.w)
     goal = min_goal + (max_goal - min_goal) * Par.w;
 
     % Objective function for the optimization
@@ -116,6 +116,7 @@ while kk==1 % Loop until stop criterion is met
     else
         ECR = Par.ECR; 
     end
+    %Par.x0(end) = 1;
     
     Fgam=round(sum(F),2); % Calculate GAM cost
         

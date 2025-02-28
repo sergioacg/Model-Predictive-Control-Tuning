@@ -126,21 +126,21 @@ while ii<=3
 
                 %Transforms the bits in the MPC horizons
                 if tt==1 
-                    N(1:my)=Fc3*(X3); 
+                    N(1:my)=min(Fc3*(X3)+dmin,2^nbp-1); 
                 else
                     Nu(H)=Fc3*X3; 
                     Nu1(H)=Fc2*Xv2(H,:)'; 
                 end
                 
                 %validates the horizons
-                if ~PreCon(N,Nu) || ~PreCon(N,Nu1) || any(N <= dmin) || any(Nu <= 1)
+                if ~PreCon(N,Nu) || ~PreCon(N,Nu1) || any(N <= dmin+1) || any(Nu <= 1)
                     if X3(Ix(end))==0
                         X3(Ix(end))=1;
                     else
                         X3(Ix(end))=0;
                     end
                     if tt==1
-                        N(1:my)=Fc3*(X3); 
+                        N(1:my)=min(Fc3*(X3)+dmin,2^nbp-1); 
                     else                        
                         Nu(H)=Fc3*X3; 
                     end
@@ -196,10 +196,15 @@ while ii<=3
                     % really quadratic. It means the square of the elements. 
                     % (Sorry for this typo!)
                     Jnu = diag(Xnu*Xnu'); %square 
+                    % Aplicar penalización logarítmica
+
+
                     %Jnu = sum(Xnu'); %sum
                     
                     %% Objective Function
                     F=sum(j21+j22)+N(1)+sum(Jnu); %Version Final paper
+                    F=sum(j21+j22)+sum(Jnu); %Version Final paper
+                    %F=sum(j21+j22) + sum(Jnu) + N(1)/(0.7*log(N(1)^2));
  
                     %Validation in VNS algorithm
                     if F < Fv %If it improved the goal

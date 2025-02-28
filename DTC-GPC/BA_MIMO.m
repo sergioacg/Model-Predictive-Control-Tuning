@@ -35,7 +35,8 @@ function [B,A,na,nb] = BA_MIMO(Bn,An)
 
         % Check for multiple poles in the same row (output) and remove them from the least common multiple (MIMO case)
         if p ~= 1
-            Au1 = round(roots(aux), 4);
+            %Au1 = round(roots(aux), 4);
+            Au1 = roots(aux);
             Pol = unique(Au1);
             A{i,i} = poly(Pol);
         end
@@ -45,8 +46,10 @@ function [B,A,na,nb] = BA_MIMO(Bn,An)
     for i = 1:p
         for j = 1:m
             aux = Bn{i,j};
-            rA = round(roots(A{i,i}), 4);
-            rAn = round(roots(An{i,j}), 4);
+            %rA = round(roots(A{i,i}), 4);
+            %rAn = round(roots(An{i,j}), 4);
+            rA = roots(A{i,i});
+            rAn = roots(An{i,j});
             kk = 1;
             while (kk <= length(rA))
                 for jj = 1:length(rAn)

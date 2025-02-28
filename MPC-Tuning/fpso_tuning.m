@@ -23,17 +23,21 @@ addpath('MPC_Tuning') % Adds the 'MPC_Tuning' folder to the Matlab path
 
 
 %% Define the process
-load('FPSO_Plant.mat')
+load('Model_Optimizado.mat')
 
 Psr = H; %system 14x4, the last imput is the disturbance.
 Ps =H;
 
 % Sampling Period and Number of iterations
-Ts=20.0;
-nit=50;
+Ts=10.0;
+nit=150;
 
 % Discrete-time Model
 Pz=c2d(Ps,Ts,'zoh');
+
+% Km=dcgain(Pz); % Calculate DC gain of plant model
+% [L,R,S] = CondMin(Km);
+% Pze = L*Pz*R;
 
 % Number of Inputs and Outputs
 my = 14; %controller variables
@@ -47,12 +51,24 @@ Ymx = 5*ones(1,14);
 %% Set constraints on the control inputs and their increments.
 Umx=[10 10 10]';      % maximum control output
 Umn=-Umx;               % minimum control output
-InUmx=[0.5 0.5 0.5];
+InUmx=[inf inf inf];
 InUmn = -InUmx;
 
+%% Setpoint
+inK=10;
+Xsp(1:my,1:nit) = 0; 
+t = 0:Ts:(nit-1)*Ts;            % Time vector for simulation 
+
+%% Specify the MD vector
+tmd = 1; %entry time of the measured disturbance.
+v = zeros(nv,nit);
+v(:,tmd:nit) = 5;
+v_filt = tf(1, [100 1]);
+mdv = lsim(v_filt, v, t);
+
 %% Reference Trajectory for the tuning algorithm
-gr = tf(1,[80 1]);
-Pref=blkdiag(gr,gr,gr,gr,gr,gr,gr,gr,gr,gr,gr,gr,gr,gr);
+gr = tf(1,[100 1]);
+Pref=blkdiag(gr,gr,-gr,gr,-gr,gr,gr,gr,gr,gr,-gr,gr,-gr,-gr);
 
 dmin = zeros(1, my);
 Kg = dcgain(Ps);
@@ -62,26 +78,29 @@ for i = 1:my
 end
 
 Pref.iodelay=diag(dmin);
-Prefz=c2d(Pref,Ts,'zoh');
-
-%% Setpoint for the Shell example into MPC Tuning algorthm
-inK=10;
-Xsp(1:my,1:nit) = 0; 
-
-%% Specify the MD vector
-tmd = 15; %entry time of the measured disturbance.
-mdv = zeros(nv,nit);
-mdv(:,tmd:end) = -5;
-
-%% Reference response for compare in GAM algorithm
-t = 0:Ts:(nit-1)*Ts;            % Time vector for simulation   
+Prefz=c2d(Pref,Ts,'zoh');  
 Xref = zeros(my,nit);
 % The reference trajectory with positive impulses is assumed because all
 % model gains are positive.
 for i = 1:my
-    Xref(i,tmd:tmd+5) = 0.1;
+    Xref(i,tmd:tmd+10) = 10;
 end
-Yref = lsim(Pref,Xref,t,'zoh')';  % Simulate reference response using lsim function
+Xref(1,tmd:tmd+10) = 12.23;
+Xref(2,tmd:tmd+10) = 12.23;
+Xref(3,tmd:tmd+10) = 28.40;
+Xref(4,tmd:tmd+10) = 28;
+Xref(5,tmd:tmd+10) = 28.40;
+Xref(6,tmd:tmd+10) = 28;
+Xref(7,tmd:tmd+10) = 13;
+Xref(8,tmd:tmd+10) = 6;
+Xref(9,tmd:tmd+10) = 6;
+Xref(10,tmd:tmd+10) = 1.16;
+Xref(11,tmd:tmd+10) = 8.6;
+Xref(12,tmd:tmd+10) = 1.16;
+Xref(13,tmd:tmd+10) = 8.6;
+Xref(14,tmd:tmd+10) = 0.08;
+
+Yref = lsim(Prefz,Xref,t,'zoh')';  % Simulate reference response using lsim function
 % % Yref = L*Yref;
 
 %% Specify the MPC signal type for the plant input signals.
@@ -90,7 +109,7 @@ sysd = setmpcsignals(Pz,MV=[1;2;3],MD=4);
 %% create MPC controller object with sample time
 mpc_toolbox = mpc(sysd, Ts);
 %% specify prediction horizon
-mpc_toolbox.PredictionHorizon = 60;
+mpc_toolbox.PredictionHorizon = 10;
 %% specify control horizon
 mpc_toolbox.ControlHorizon = 3;
 %% specify nominal values for inputs and outputs
@@ -109,8 +128,13 @@ for i = 1:my
     mpc_toolbox.OV(i).Min = Ymn(i);
     mpc_toolbox.OV(i).Max = Ymx(i);
     % specify constraint softening for OV
-    mpc_toolbox.OV(i).MinECR = 1;
-    mpc_toolbox.OV(i).MaxECR = 1;
+    if i > 7
+        mpc_toolbox.OV(i).MinECR = 1;
+        mpc_toolbox.OV(i).MaxECR = 1;
+    else
+        mpc_toolbox.OV(i).MinECR = 0.2;
+        mpc_toolbox.OV(i).MaxECR = 0.2;
+    end
 end
 
 %% MPC Scales
@@ -127,12 +151,12 @@ for i = 1:my
     mpc_toolbox.OV(i).ScaleFactor = Yrange(i);
 end
 % distrubance variables
- mpc_toolbox.DisturbanceVariables(1).ScaleFactor = 5;
+ mpc_toolbox.DisturbanceVariables(1).ScaleFactor = max(mdv)-min(mdv);
 
  
 %% specify weights
 mpc_toolbox.Weights.MV = [0 0 0];
-mpc_toolbox.Weights.MVRate = [0.1 0.1 0.01];
+mpc_toolbox.Weights.MVRate = [0.1 0.1 0.1];
 mpc_toolbox.Weights.OV = zeros(1, my);
 mpc_toolbox.Weights.ECR = 1000;
 
@@ -146,11 +170,9 @@ options.OpenLoop = 'off';
 
 %% MPC Tuning algorithm
 if tuning == true
-    %w=[0.0001 0.0001 0.5 0.5 0.5 0.5 0.5]; %pareto
-    w=[ones(1,7)*0.01 ones(1,7)];
-    tic
-        [mpc_toolbox,scale,delta,lambda,N,Nu,Fob,ECR] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,3);
-    toc
+    w=[2 2 9.3 9.3 9.3 9.3 2 9.3 9.3 9.3 9.3 9.3 9.3 1];
+    [mpc_toolbox,scale,delta,lambda,N,Nu,Fob,ECR] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,3);
+
     L = scale.L;
     R = scale.R;
     Ru = scale.Ru;
@@ -188,11 +210,14 @@ yolab{8}='$y_{o_8}(k|1)$';yolab{9}='$y_{o_9}(k|1)$';yolab{10}='$y_{o_{10}}(k|1)$
 yolab{11}='$y_{o_{11}}(k|1)$';yolab{12}='$y_{o_{12}}(k|1)$';yolab{13}='$y_{o_{13}}(k|1)$';yolab{14}='$y_{o_{14}}(k|1)$';
 ulab{1}='$u_1$';ulab{2}='$u_2$';ulab{3}='$u_3$';
 
+% sysd = setmpcsignals(Pze,MV=[1;2;3],MD=4);
+% mpc_toolbox.Model.Plant
+
  %% Resultad
 FS=16;
 colores=[30, 112, 0]/255;
 coloresR=[178, 201, 35]/255;
-nit_open = N(1) + 30; % Number of iterations for the open loop simulation
+nit_open = min(N(1) + 30, length(mdv)); % Number of iterations for the open loop simulation
 t = 0:Ts:(nit_open-1)*Ts;
 r_ma = zeros(my, nit_open); % Reference for the model (step)
 r_ma(:,1:5) = 1;
@@ -206,8 +231,7 @@ r_ma = L*r_ma;
 Yref_ma = lsim(Prefz, r_ma, t, 'zoh');
 
 % Specify the MD vector
-mdv_ma = zeros(1,nit_open);
-mdv_ma(:,1:end) = mdv(end);
+mdv_ma = mdv(1:nit_open);
 mdv_ma = Rv\mdv_ma;
 
 %Non-square system

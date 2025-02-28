@@ -41,14 +41,6 @@ lineal = Par.lineal; % Flag for linear system
 if lineal ~= 1 % If nonlinear system
     init = Par.init;   % Initial parameter to integrate the internal model
     model = Par.Pz;    % EDO of the process model
-%     xmax=Par.xmax;
-%     xmin=Par.xmin;
-%     umax=Par.umax;
-%     umin=Par.umin;
-%     Norm.xmax=xmax;
-%     Norm.xmin=xmin;
-%     Norm.umax=umax;
-%     Norm.umin=umin;
 end
 
 %% Decision variables (Try to find the weights.)
@@ -102,15 +94,15 @@ end
 % degrees of freedom, what we are trying to do is that Yref has at least the 
 % exact direction of the output of the MPC controller calculated with the 
 % current tuning parameters at the present instant of the optimization algorithm.
-if any(delta == 0)
-    for i=1:ny
-        if delta(i) == 0
-            if abs(max(Xy(i,:))) < abs(min(Xy(i,:)))
-                Yref(i,:) = -1*Yref(i,:);
-            end
-        end
-    end
-end
+% if any(delta == 0)
+%     for i=1:ny
+%         if delta(i) == 0
+%             if abs(max(Xy(i,1:end/2))) < abs(min(Xy(i,1:end/2)))
+%                 Yref(i,:) = -1*Yref(i,:);
+%             end
+%         end
+%     end
+% end
 
 
 
@@ -136,6 +128,9 @@ if any(delta == 0) % If working with bands
 else % If working with reference trajectory
     % Error between closed-loop response and reference trajectory
     errFA=Xy-Yref; % Calculate error between closed-loop response and reference trajectory
+    %error_weigth = alpha.*errFA;
+    %J1=(diag(error_weigth*error_weigth')); % Calculate squared error
+    
     J1=(diag(errFA*errFA')); % Calculate squared error
     F = J1; % Penalize based on squared error
 end

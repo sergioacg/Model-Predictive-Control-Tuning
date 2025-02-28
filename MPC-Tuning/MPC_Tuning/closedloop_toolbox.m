@@ -1,3 +1,5 @@
+
+
 function [y,u,t,ys,uopt] = closedloop_toolbox(mpc_toolbox,r,v,N,Nu,delta,lambda,ECR,nit)
 % Calculates the closed-loop response of an MPC controller using the Matlab Toolbox.
 %
@@ -89,7 +91,8 @@ nit_open = 1;
 xc = mpcstate(mpc_toolbox);
 % Calculate the optimal control input based on the current state xc, the last output yo, 
 % and the last setpoint r
-[~,Info]  = mpcmove(mpc_toolbox, xc, yo(end,:), r(end,:)); %, v(end,:));
+[~,Info]  = mpcmove(mpc_toolbox, xc, yo(end,:), r(end,:), v(end,:));
+
 
 % Create the optimal control input vector with the same length as the closed-loop simulation
 if length(Info.Uopt) > nit
@@ -98,7 +101,7 @@ else
     uopt = [Info.Uopt;  Info.Uopt(end,:).*ones(length(y)-length(Info.Uopt),length(lambda))];
 end
 % Calculate the open-loop response of the plant to the optimal control input uopt
-ys = lsim(Pz,[uopt v*0],t);
+ys = lsim(Pz,[uopt v],t);
 
 % Convert output vectors back to row vectors
 y = col2row(y);

@@ -21,7 +21,7 @@ datetime % Displays the current date and time
 
 %% ********* Code Configuration Flags ************
 %true: find the tuning parameters, false: use .mat file to load the tuning parameters.
-tuning = true; 
+tuning = false; 
 rest = true; % false: Without constraints; true: With constraints
 caso = 1; % 1: Case 1 (fast); 2: Case 2 (slow)
 nominal = true; % true: Nominal case; false: Model error case
@@ -71,7 +71,7 @@ ny = 2;
 
 %% Reference Trajectory for the tuning algorithm
 if caso == 1
-    Pref=[tf(1,[10 1]),0;0,tf(1,[7 1])];
+    Pref=[tf(1,[10 1]),0;0,tf(1,[12 1])];
 else
     Pref=[tf(1,[25 1]),0;0,tf(1,[20 1])];
 end
@@ -95,8 +95,6 @@ Xsp(2,1:nit) = 0.5;
 
 %% Specify the MD vector
 mdv = zeros(nit,1);
-mdv(140:end) = -0.25;
- 
 % Reference response for compare in GAM algorithm
 t = 0:Ts:(nit-1)*Ts;            % Time vector for simulation    
 Yref = lsim(Pref,Xsp,t,'zoh');  % Simulate reference response using lsim function
@@ -155,7 +153,7 @@ options.OpenLoop = 'off';
 
 %% MPC Tuning algorithm
 if tuning == true
-    w=[0.1 0.50]; %Pesos para la curva de pareto
+    w=[0.5 0.10]; %Pesos para la curva de pareto
     tic
         [mpc_toolbox,scale,delta,lambda,N,Nu,Fob,ECR] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
     toc
@@ -268,7 +266,8 @@ end
 
 % Scale the signals using L and R matrices
 r = row2col(L*Xsp);
-% v = row2col(R\mdv);
+mdv(140:end) = -0.25;
+v = row2col(Rv\mdv);
 
 %Define an actual plant model which differs from the predicted model
 real_plant = L * Ps * R;
@@ -280,7 +279,7 @@ options.Model = plant;
 
 % Simulate the controller.
 if simulink == false
-    [y,t,u,xp] = sim(mpc_toolbox,nit,r,mdv,options);
+    [y,t,u,xp] = sim(mpc_toolbox,nit,r,v,options);
     % Unscaled the vectors
     y = row2col(L\y');
     u = row2col(Ru*u');

@@ -21,7 +21,7 @@ datetime % Displays the current date and time
 
 %% ********* Code Configuration Flags ************
 %true: find the tuning parameters, false: use .mat file to load the tuning parameters.
-tuning = true; 
+tuning = false; 
 rest = true; % false: Without constraints; true: With constraints
 caso = 2; % 1: Case 1 (fast); 2: Case 2 (slow)
 nominal = true; % true: Nominal case; false: Model error case
