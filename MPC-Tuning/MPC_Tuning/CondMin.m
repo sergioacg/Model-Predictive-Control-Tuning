@@ -44,7 +44,7 @@ X0(1:m+n)=0.1;
 %                    'TolCon',1e-5,'MaxFunEvals',8000);
 
 options = optimoptions('fmincon', 'MaxIterations', 5000, ...
-        'MaxFunctionEvaluations', 10000);
+        'MaxFunctionEvaluations', 30000);
 
 J=@(X)funobj(X,K); % Objective function
 

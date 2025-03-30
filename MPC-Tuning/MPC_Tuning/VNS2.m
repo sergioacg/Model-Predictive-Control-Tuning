@@ -20,14 +20,14 @@ function [N,Nu,Xv1,Xv2,Fvns] = VNS2(Par)
 %
 % https://en.wikipedia.org/wiki/Variable_neighborhood_search
 %
-% by: Sergio Andres Castaño Giraldo
+% by: Sergio Andres CastaÃ±o Giraldo
 %    Federal University of Rio de Janeiro
 %    LADES - Laboratory of Software Development
 %    https://controlautomaticoeducacion.com/
 % Reference:
 %
 % Article (Reference):
-% Giraldo, Sergio A. C., Príamo A. Melo, and Argimiro R. Secchi. 2022.
+% Giraldo, Sergio A. C., PrÃ¡amo A. Melo, and Argimiro R. Secchi. 2022.
 % "Tuning of Model Predictive Controllers Based on Hybrid Optimization"
 % Processes 10, no. 2: 351. https://doi.org/10.3390/pr10020351
 
@@ -196,14 +196,14 @@ while ii<=3
                     % really quadratic. It means the square of the elements. 
                     % (Sorry for this typo!)
                     Jnu = diag(Xnu*Xnu'); %square 
-                    % Aplicar penalización logarítmica
+                    % Apply logarithmic penalty
 
 
                     %Jnu = sum(Xnu'); %sum
                     
                     %% Objective Function
-                    F=sum(j21+j22)+N(1)+sum(Jnu); %Version Final paper
-                    F=sum(j21+j22)+sum(Jnu); %Version Final paper
+                    F=sum(j21+j22)+N(1)+sum(Jnu); %Final paper version
+                    %F=sum(j21+j22)+sum(Jnu); %Final paper version
                     %F=sum(j21+j22) + sum(Jnu) + N(1)/(0.7*log(N(1)^2));
  
                     %Validation in VNS algorithm
@@ -218,7 +218,7 @@ while ii<=3
                         Ix(end)=-1;
                         Ix(1)=-1;
                         
-                        %Código alternativo (Pruebas) Cambia N y Nu
+                        %Alternative code (Tests) Change N and Nu
                         XX=de2bi(N(1),length(Fc1));                              
                         Xv1=flip(XX)';
                         XX=de2bi(Nu,length(Fc2));  
@@ -256,25 +256,25 @@ while ii<=3
                 % If it reached the end, and this is not index 1, it means that it is
                 % time to update the penultimate index
                 if ~isempty(pos) && pos~=1
-                    Ix(pos-1)=Ix(pos-1)-1; %Incrementa el penultimo indice
-                    Ix(pos)=Ix(pos-1)-1; %Reinicia el ultimo indice una posición encima del penultimo
+                    Ix(pos-1)=Ix(pos-1)-1; %Increment the penultimate index
+                    Ix(pos)=Ix(pos-1)-1; %Reset the last index one position above the penultimate
                 end
-                pos=find(Ix==0); %Verifica nuevamente que no haya ningun indice en la ultima posición.
+                pos=find(Ix==0); %Check again that there is no index in the last position.
             end
-            %En el caso que la función objetivo haya mejorado debo actualizar el
-            %ultimo indice que fue modificado abrubtamente arriba con el fin de que
-            %el algoritmo saliera del ciclo while.
+            %In case the objective function has improved, I must update the
+            %last index that was abruptly modified above in order for the
+            %algorithm to exit the while loop.
             if isempty(pos) && Ix(1)~= -1
                 for j=find(Ix<0, 1 ):Order
                     Ix(j)=Ix(j-1)-1;
                 end
             end
-           %Vuelva a la incumbente de la solución actual. 
+           %Return to the incumbent of the current solution. 
            Iter=Iter+1;
         end
 
         if tt==0
-            H=Hpc; %Busca de nuevo reiniciando el H
+            H=Hpc; %Search again restarting H
         end
         H=H+1;
        end
@@ -300,5 +300,5 @@ for i=1:ny
     Nu(i)=Fc2*Xv2(i,:)';
 end
 
-Fvns=Fv; %Retorna el valor del objetivo actual
+Fvns=Fv; %Returns the value of the current objective
 end

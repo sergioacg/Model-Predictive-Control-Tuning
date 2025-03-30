@@ -21,7 +21,7 @@ datetime % Displays the current date and time
 
 %% ********* Code Configuration Flags ************
 %true: find the tuning parameters, false: use .mat file to load the tuning parameters.
-tuning = false; 
+tuning = true; 
 rest = true; % false: Without constraints; true: With constraints
 caso = 1; % 1: Case 1 (fast); 2: Case 2 (slow)
 nominal = true; % true: Nominal case; false: Model error case
@@ -88,20 +88,20 @@ for i=1:my
 end
 
 %% Setpoint for the Shell example
-inK=10;
 Xsp(1,1:nit) = 0.8;
 Xsp(2,1:nit) = 0.5;
 
 
 %% Specify the MD vector
 mdv = zeros(nit,1);
+mdv(140:end) = -0.25;
 % Reference response for compare in GAM algorithm
 t = 0:Ts:(nit-1)*Ts;            % Time vector for simulation    
 Yref = lsim(Pref,Xsp,t,'zoh');  % Simulate reference response using lsim function
 
 %% create MPC controller object with sample time
 % Create an MPC object with the specified sample time and input/output signal type using the 'setmpcsignals' function.
-sysd = setmpcsignals(Pz,MV=[1;2],MD=[3]);
+sysd = setmpcsignals(Pz,MV=[1;2],MD=3);
 
 % Initialize the MPC object using the 'mpc' function.
 % Specify the plant model, sample time, prediction and control horizons, and input/output signal type.
@@ -153,7 +153,7 @@ options.OpenLoop = 'off';
 
 %% MPC Tuning algorithm
 if tuning == true
-    w=[0.5 0.10]; %Pesos para la curva de pareto
+    w=[0.1 0.1]; %Pesos para la curva de pareto
     tic
         [mpc_toolbox,scale,delta,lambda,N,Nu,Fob,ECR] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,4);
     toc
@@ -194,7 +194,7 @@ mpc_toolbox.ControlHorizon = max(Nu);
 %% specify weights
 mpc_toolbox.Weights.OV = delta;
 mpc_toolbox.Weights.MVRate = lambda;
-mpc_toolbox.Weights.ECR = 10000;
+mpc_toolbox.Weights.ECR = ECR;
 
 %% Open Loop Response
 % the MPC, in a given Pareto front, finds an optimal trajectory (open loop)

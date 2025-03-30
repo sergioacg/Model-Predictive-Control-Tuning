@@ -9,15 +9,6 @@
 % employed for any predictive control algorithm, as it offers adjustable 
 % parameters based on the implementation.
 %
-% Cite as:
-% Giraldo, Sergio A. C., Príamo A. Melo, and Argimiro R. Secchi. 2022.
-% "Tuning of Model Predictive Controllers Based on Hybrid Optimization"
-% Processes 10, no. 2: 351. https://doi.org/10.3390/pr10020351
-%
-% Author:
-% Sergio Andres Castaño Giraldo
-% 2023
-% https://controlautomaticoeducacion.com/
 %
 
 clc % Clears the command window
@@ -29,16 +20,36 @@ datetime % Displays the current date and time
 %true: find the tuning parameters, false: use .mat file to load the tuning parameters.
 tuning = false; 
 rest = true; % false: Without constraints; true: With constraints
-nominal = true; % true: Nominal case; false: Model error case
+cases = 5; % 1: Nominal case;
 lineal = true; % Linear model used in MPCTuning
+multi_scenario = true;
 
 addpath('MPC_Tuning') % Adds the 'MPC_Tuning' folder to the Matlab path
 
 %% Model error of the Shell column (To use it in a real plant)
-if nominal == true
-    e1 = 0.0; e2 = 0.0; e3 = 0.0; e4 = 0.0; e5 = 0.0; % Nominal case
-else
-    e1 = 0.2; e2 = 0.2; e3 = 0.3; e4 = 0.5; e5 = 0.5; % Model error case
+switch cases
+    case 1
+        e1 = 0; e2 = 0; e3 = 0; e4 = 0; e5 = 0;
+        d1 = 0.5; d2 = 0.5;
+
+    case 2
+        e1 = -1; e2 = -1; e3 = -1; e4 = 1; e5 = 1;
+        d1 = 0.5; d2 = 0.5;
+
+    case 3
+        e1 = 1; e2 = -1; e3 = 1; e4 = 1; e5 = 1;
+        d1 = -0.5; d2 = -0.5;
+
+    case 4
+        e1 = 1; e2 = 1; e3 = 1; e4 = 1; e5 = 1;
+        d1 = 0.5; d2 = -0.5;
+
+    case 5
+        e1 = -1; e2 = 1; e3 = 0; e4 = 0; e5 = 0;
+        d1 = -0.5; d2 = -0.5;
+
+    otherwise
+        error('Caso no reconocido. Selecciona un valor entre 1 y 5.');
 end
 
 %% Define the process
@@ -86,6 +97,7 @@ Ds=[tf(1.20,[45 1]) tf(1.44,[40 1]);...
 Ds.iodelay=[27 27;15 15;0 0;0 0;0 0;0 0;0 0];
 
 Ps=[Gs Ds];
+% Ps = Psr;
 
 % Sampling Period and Number of iterations
 Ts=4.0;
@@ -106,6 +118,9 @@ Ymx =[0.005, 0.005, 0.5, 0.5, 0.5, 0.5, 0.5]';
 Umx=[0.5 0.5 0.5]';      % maximum control output
 Umn=-Umx;               % minimum control output
 
+InUmx=[0.2 0.2 0.2]; % maximum control increment
+InUmn=-InUmx; % minimum control increment
+
 %% Reference Trajectory for the tuning algorithm
 gr = tf(1,[50 1]);
 Pref=blkdiag(gr,gr,gr,gr,gr,gr,gr);
@@ -120,7 +135,8 @@ Xsp(1:my,1:nit) = 0;
 %% Specify the MD vector
 tmd = 20; %entry time of the measured disturbance.
 mdv = zeros(2,nit);
-mdv(:,tmd:end) = 0.5;
+mdv(1,tmd:end) = d1;
+mdv(2,tmd:end) = d2;
 
 %% Reference response for compare in GAM algorithm
 t = 0:Ts:(nit-1)*Ts;            % Time vector for simulation   
@@ -149,6 +165,8 @@ mpc_toolbox.Model.Nominal.Y = [0;0;0;0;0;0;0];
 for i = 1:ny
     mpc_toolbox.MV(i).Min = Umn(i);
     mpc_toolbox.MV(i).Max = Umx(i);
+    mpc_toolbox.MV(i).RateMin = InUmn(i);
+    mpc_toolbox.MV(i).RateMax = InUmx(i);
 end
 
 %% specify constraints for OV
@@ -186,7 +204,7 @@ end
 mpc_toolbox.Weights.MV = [0 0 0];
 mpc_toolbox.Weights.MVRate = [0.1 0.1 0.1];
 mpc_toolbox.Weights.OV = [0 0 0 0 0 0 0];
-mpc_toolbox.Weights.ECR = 10000;
+mpc_toolbox.Weights.ECR = 1000;
 
 %% specify simulation options
 % Set simulation options for the MPC controller using the 'mpcsimopt' function.

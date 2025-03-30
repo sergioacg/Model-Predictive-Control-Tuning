@@ -29,8 +29,8 @@ Psr = H; %system 14x4, the last imput is the disturbance.
 Ps =H;
 
 % Sampling Period and Number of iterations
-Ts=10.0;
-nit=150;
+Ts=20.0;
+nit=100;
 
 % Discrete-time Model
 Pz=c2d(Ps,Ts,'zoh');
@@ -51,7 +51,7 @@ Ymx = 5*ones(1,14);
 %% Set constraints on the control inputs and their increments.
 Umx=[10 10 10]';      % maximum control output
 Umn=-Umx;               % minimum control output
-InUmx=[inf inf inf];
+InUmx=[0.5 0.5 0.5];
 InUmn = -InUmx;
 
 %% Setpoint
@@ -63,6 +63,7 @@ t = 0:Ts:(nit-1)*Ts;            % Time vector for simulation
 tmd = 1; %entry time of the measured disturbance.
 v = zeros(nv,nit);
 v(:,tmd:nit) = 5;
+v(:,nit/2:nit) = -5;
 v_filt = tf(1, [100 1]);
 mdv = lsim(v_filt, v, t);
 
@@ -83,24 +84,26 @@ Xref = zeros(my,nit);
 % The reference trajectory with positive impulses is assumed because all
 % model gains are positive.
 for i = 1:my
-    Xref(i,tmd:tmd+10) = 10;
+    Xref(i,tmd:tmd+30) = 0;
 end
-Xref(1,tmd:tmd+10) = 12.23;
-Xref(2,tmd:tmd+10) = 12.23;
-Xref(3,tmd:tmd+10) = 28.40;
-Xref(4,tmd:tmd+10) = 28;
-Xref(5,tmd:tmd+10) = 28.40;
-Xref(6,tmd:tmd+10) = 28;
-Xref(7,tmd:tmd+10) = 13;
-Xref(8,tmd:tmd+10) = 6;
-Xref(9,tmd:tmd+10) = 6;
-Xref(10,tmd:tmd+10) = 1.16;
-Xref(11,tmd:tmd+10) = 8.6;
-Xref(12,tmd:tmd+10) = 1.16;
-Xref(13,tmd:tmd+10) = 8.6;
-Xref(14,tmd:tmd+10) = 0.08;
+% Xref(1,tmd:tmd+10) = 12.23;
+% Xref(2,tmd:tmd+10) = 12.23;
+% Xref(3,tmd:tmd+10) = 28.40;
+% Xref(4,tmd:tmd+10) = 28;
+% Xref(5,tmd:tmd+10) = 28.40;
+% Xref(6,tmd:tmd+10) = 28;
+% Xref(7,tmd:tmd+10) = 13;
+% Xref(8,tmd:tmd+10) = 6;
+% Xref(9,tmd:tmd+10) = 6;
+% Xref(10,tmd:tmd+10) = 1.16;
+% Xref(11,tmd:tmd+10) = 8.6;
+% Xref(12,tmd:tmd+10) = 1.16;
+% Xref(13,tmd:tmd+10) = 8.6;
+% Xref(14,tmd:tmd+10) = 0.08;
 
 Yref = lsim(Prefz,Xref,t,'zoh')';  % Simulate reference response using lsim function
+Yref = zeros(my, nit);
+
 % % Yref = L*Yref;
 
 %% Specify the MPC signal type for the plant input signals.
@@ -109,9 +112,9 @@ sysd = setmpcsignals(Pz,MV=[1;2;3],MD=4);
 %% create MPC controller object with sample time
 mpc_toolbox = mpc(sysd, Ts);
 %% specify prediction horizon
-mpc_toolbox.PredictionHorizon = 10;
+mpc_toolbox.PredictionHorizon = 64;
 %% specify control horizon
-mpc_toolbox.ControlHorizon = 3;
+mpc_toolbox.ControlHorizon = 8;
 %% specify nominal values for inputs and outputs
 mpc_toolbox.Model.Nominal.U = [0;0;0;0];
 mpc_toolbox.Model.Nominal.Y = [0;0;0;0;0;0;0;0;0;0;0;0;0;0];
@@ -132,8 +135,8 @@ for i = 1:my
         mpc_toolbox.OV(i).MinECR = 1;
         mpc_toolbox.OV(i).MaxECR = 1;
     else
-        mpc_toolbox.OV(i).MinECR = 0.2;
-        mpc_toolbox.OV(i).MaxECR = 0.2;
+        mpc_toolbox.OV(i).MinECR = 1;
+        mpc_toolbox.OV(i).MaxECR = 1;
     end
 end
 
@@ -156,9 +159,9 @@ end
  
 %% specify weights
 mpc_toolbox.Weights.MV = [0 0 0];
-mpc_toolbox.Weights.MVRate = [0.1 0.1 0.1];
+mpc_toolbox.Weights.MVRate = [0.1 0.1 0.1];%[1800 200 40];
 mpc_toolbox.Weights.OV = zeros(1, my);
-mpc_toolbox.Weights.ECR = 1000;
+mpc_toolbox.Weights.ECR = 1000;%5000
 
 %% specify simulation options
 % Set simulation options for the MPC controller using the 'mpcsimopt' function.
@@ -170,8 +173,8 @@ options.OpenLoop = 'off';
 
 %% MPC Tuning algorithm
 if tuning == true
-    w=[2 2 9.3 9.3 9.3 9.3 2 9.3 9.3 9.3 9.3 9.3 9.3 1];
-    [mpc_toolbox,scale,delta,lambda,N,Nu,Fob,ECR] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,7,3);
+    w=ones(1,14);
+    [mpc_toolbox,scale,delta,lambda,N,Nu,Fob,ECR] = MPCTuning(mpc_toolbox,Xsp,lineal,w,nit,Yref,mdv,6,4);
 
     L = scale.L;
     R = scale.R;

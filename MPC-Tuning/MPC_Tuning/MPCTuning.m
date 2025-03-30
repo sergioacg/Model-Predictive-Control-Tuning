@@ -284,7 +284,7 @@ Xv=[flip(de2bi(Hp,nbp)) flip(de2bi(Hc,nbc))]'; % Convert horizons to binary and 
 
 % Initial horizon
 N(1:my)=Hp; % Set initial prediction horizon to maximum value
-Nu(1:ny)=2; % Set initial control horizon to 2
+Nu(1:ny)=Hc; % Set initial control horizon to 2
 
 % Initial past cost
 Fv=1e30; % Set initial past cost to large value
@@ -299,14 +299,15 @@ fo(1:my)=0; % Initialize Utopia solution vector
 if any(mpcobj.Weights.OV == 0)
     x0=[ones(1,my).*q0 ones(1,ny).*w0 1]; % Initial guess for optimization
     % Constraints
-    lb1=[ones(1,my)*1e-7 ones(1,ny)*1e-7 1e-2]; % Lower bound for optimization variables
-    %ub1=[ones(1,my+ny)*inf 1]; % No upper bound for optimization variables
+    lb1=[ones(1,my)*1e-7 ones(1,ny)*1e-7 1e-1]; % Lower bound for optimization variables
+    ub1=[ones(1,my+ny)*inf 2]; % upper bound for optimization variables
 else
     x0=[ones(1,my).*q0 ones(1,ny).*w0]; % Initial guess for optimization
     % Constraints
     lb1=[ones(1,my)*1e-7 ones(1,ny)*1e-7]; % Lower bound for optimization variables 
+    ub1=[]; % No upper bound for optimization variables
 end 
-ub1=[]; % No upper bound for optimization variables
+
 % Parameters
 Par.ny=my;          % Number of outputs
 Par.nu=ny;          % Number of inputs

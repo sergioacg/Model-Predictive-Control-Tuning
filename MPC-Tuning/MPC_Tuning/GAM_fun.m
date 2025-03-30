@@ -24,6 +24,8 @@ function [g h]=GAM_fun(X,Par)
 
 global F % Global variable to store objective function value
 
+hasParallel = license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('parallel'));
+
 %% Realocate variables
 N=Par.N;        % Prediction horizon
 Nu=Par.Nu;      % Control horizon
@@ -105,9 +107,12 @@ end
 % end
 
 
-
 %% Objective function value
 if any(delta == 0) % If working with bands
+    % Error between closed-loop response and reference trajectory
+    errFA=abs(Xy)-abs(Yref); % Calculate error between closed-loop response and reference trajectory
+    J1=(diag(errFA*errFA')); % Calculate squared error
+
     % Initialize upper and lower bands for each output variable (OV)
     band_upper = zeros(Par.ny, 1); % Upper band for each output
     band_lower = zeros(Par.ny, 1); % Lower band for each output
@@ -119,18 +124,16 @@ if any(delta == 0) % If working with bands
     end
 
     % Check if the closed-loop response violates the bands in steady state
-    violations_upper = max(0, Xy - band_upper); % Violations above the upper band
-    violations_lower = max(0, band_lower - Xy); % Violations below the lower band
+    violations_upper = max(0, Xy - band_upper)./abs(band_upper); % Violations above the upper band
+    violations_lower = max(0, band_lower - Xy)./abs(band_lower); % Violations below the lower band
 
     % Calculate penalty for violations
     J_band = sum(violations_upper'.^2 + violations_lower'.^2)'; % Squared penalty for violations    
-    F = J_band; % Penalize based on band violations
-else % If working with reference trajectory
+    F = J_band + J1; % Penalize based on band violations
+    
+else
     % Error between closed-loop response and reference trajectory
     errFA=Xy-Yref; % Calculate error between closed-loop response and reference trajectory
-    %error_weigth = alpha.*errFA;
-    %J1=(diag(error_weigth*error_weigth')); % Calculate squared error
-    
     J1=(diag(errFA*errFA')); % Calculate squared error
     F = J1; % Penalize based on squared error
 end
